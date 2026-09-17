@@ -356,10 +356,6 @@ button {
   width: 22px;
   height: 22px;
 }
-.settings-icon b {
-  font-size: 17px;
-  line-height: 1;
-}
 .icon-check {
   color: var(--ios-blue);
   background: transparent !important;
@@ -367,43 +363,6 @@ button {
 }
 .icon-check svg {
   width: 21px;
-}
-.icon-cellular::before {
-  content: '';
-  width: 19px;
-  height: 17px;
-  background:
-    linear-gradient(to top, #fff 0 100%) 0 12px/3px 5px no-repeat,
-    linear-gradient(to top, #fff 0 100%) 5px 9px/3px 8px no-repeat,
-    linear-gradient(to top, #fff 0 100%) 10px 5px/3px 12px no-repeat,
-    linear-gradient(to top, #fff 0 100%) 15px 0/3px 17px no-repeat;
-}
-.icon-hotspot::before {
-  content: '◉';
-  font-size: 19px;
-}
-.icon-exposure::before {
-  content: '✳';
-}
-.icon-update::before {
-  content: '↻';
-  font-size: 22px;
-}
-.icon-storage::before {
-  content: '▥';
-}
-.icon-language::before {
-  content: 'A';
-  font-size: 17px;
-  font-weight: 600;
-}
-.icon-transfer::before {
-  content: '⇄';
-  font-size: 21px;
-}
-.icon-legal::before {
-  content: '§';
-  font-size: 20px;
 }
 [data-pwacn-switch] {
   flex: 0 0 auto;

@@ -102,7 +102,7 @@ const colors: Record<IconName, string> = {
 };
 
 function Glyph({ name }: { name: IconName }) {
-  const paths: Partial<Record<IconName, ReactNode>> = {
+  const paths: Record<IconName, ReactNode> = {
     airplane: (
       <path d="m3 13 8-2 6.5-7c.8-.8 2.1-1 2.7-.4.6.6.4 1.9-.4 2.7L13 13l-2 8-2-1 .5-5.5L5 16l-2-3Z" />
     ),
@@ -113,6 +113,13 @@ function Glyph({ name }: { name: IconName }) {
       </>
     ),
     bluetooth: <path d="m9 4 7 6-7 6V4Zm0 12 7 6V10L5 19m0-14 11 11" />,
+    cellular: (
+      <path
+        d="M4 20v-4h3v4H4Zm4.5 0v-7h3v7h-3Zm4.5 0V9h3v11h-3Zm4.5 0V4h3v16h-3Z"
+        fill="currentColor"
+        stroke="none"
+      />
+    ),
     battery: (
       <>
         <rect x="4" y="7" width="15" height="10" rx="2" />
@@ -173,6 +180,34 @@ function Glyph({ name }: { name: IconName }) {
     faceid: (
       <path d="M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3M4 16v3a1 1 0 0 0 1 1h3m8 0h3a1 1 0 0 0 1-1v-3M9 10v2m6-2v2m-6 4c2 1.3 4 1.3 6 0" />
     ),
+    standby: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 9.5V12l2 1" />
+      </>
+    ),
+    wallpaper: (
+      <>
+        <rect x="4" y="3" width="13" height="17" rx="2" />
+        <path d="M8 7h12v14a1 1 0 0 1-1 1H8V7Zm-4 9 4-4 3 3 2-2 4 4" />
+      </>
+    ),
+    siri: (
+      <path d="M12 2c.8 5.4 2.6 7.2 8 8-5.4.8-7.2 2.6-8 8-.8-5.4-2.6-7.2-8-8 5.4-.8 7.2-2.6 8-8Zm6 13c.3 2 .9 2.7 3 3-2.1.3-2.7 1-3 3-.3-2-.9-2.7-3-3 2.1-.3 2.7-1 3-3Z" />
+    ),
+    sos: (
+      <>
+        <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8m0-12.8L5.6 18.4" />
+        <circle cx="12" cy="12" r="4" />
+      </>
+    ),
+    exposure: (
+      <>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2v5m0 10v5M2 12h5m10 0h5M5 5l3.5 3.5m7 7L19 19m0-14-3.5 3.5m-7 7L5 19" />
+      </>
+    ),
     privacy: (
       <>
         <path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z" />
@@ -186,6 +221,19 @@ function Glyph({ name }: { name: IconName }) {
         <path d="M3 20a6 6 0 0 1 12 0m0-5a5 5 0 0 1 6 5" />
       </>
     ),
+    wallet: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="3" />
+        <path d="M3 9h18M15 13h4" />
+      </>
+    ),
+    game: (
+      <>
+        <path d="M7 8h10c3 0 5 2.5 5 5.5S20.5 20 18 20c-2 0-3-3-6-3s-4 3-6 3c-2.5 0-4-3.5-4-6.5S4 8 7 8Z" />
+        <path d="M7 12v4m-2-2h4m7-1h.1m3 2h.1" />
+      </>
+    ),
+    icloud: <path d="M7 18h11a4 4 0 0 0 .4-8A6.5 6.5 0 0 0 6 9a4.5 4.5 0 0 0 1 9Z" />,
     notifications: (
       <>
         <path d="M6 16h12l-2-3V9a4 4 0 0 0-8 0v4l-2 3Z" />
@@ -219,11 +267,56 @@ function Glyph({ name }: { name: IconName }) {
         <path d="M12 11v6m0-10v.1" />
       </>
     ),
+    update: (
+      <>
+        <path d="M20 7v5h-5M4 17v-5h5" />
+        <path d="M18.5 9A7 7 0 0 0 6 7l-2 5m16 0-2 5a7 7 0 0 1-12.5-2" />
+      </>
+    ),
+    storage: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M3 9h18M8 4v5m8-5v5M7 14h3m4 0h3" />
+      </>
+    ),
+    language: (
+      <>
+        <path d="m4 19 5-14 5 14M6 14h6M14 7h7m-3.5 0c0 6-3.5 9-3.5 9m3.5-6c1 2 2.2 3.4 4 4.5" />
+      </>
+    ),
+    transfer: (
+      <>
+        <path d="M4 8h14l-3-3m3 11H4l3 3" />
+      </>
+    ),
+    legal: (
+      <>
+        <path d="M12 3v18M7 6h10M5 9l-3 6h6L5 9Zm14 0-3 6h6l-3-6ZM7 21h10" />
+      </>
+    ),
+    reset: <path d="M4 4v6h6M5 9a8 8 0 1 1-1 6" />,
     check: <path d="m5 12 4 4L19 6" />,
     lock: (
       <>
         <rect x="5" y="10" width="14" height="11" rx="2" />
         <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+      </>
+    ),
+    key: (
+      <>
+        <circle cx="8" cy="15" r="4" />
+        <path d="m11 12 8-8 2 2-2 2 1.5 1.5-2 2L17 10l-3 3" />
+      </>
+    ),
+    shield: (
+      <>
+        <path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z" />
+        <path d="M9 12h6M12 9v6" />
+      </>
+    ),
+    developer: (
+      <>
+        <path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16" />
       </>
     ),
     location: (
@@ -247,41 +340,8 @@ function Glyph({ name }: { name: IconName }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {paths[name] ?? null}
+        {paths[name]}
       </svg>
-      {!paths[name] ? (
-        <b>
-          {name === 'icloud'
-            ? '☁'
-            : name === 'family'
-              ? '♟'
-              : name === 'wallet'
-                ? '▰'
-                : name === 'sos'
-                  ? '✳'
-                  : name === 'action'
-                    ? '◉'
-                    : name === 'camera'
-                      ? '●'
-                      : name === 'control'
-                        ? '◐'
-                        : name === 'home'
-                          ? '⌂'
-                          : name === 'standby'
-                            ? '◫'
-                            : name === 'wallpaper'
-                              ? '▧'
-                              : name === 'siri'
-                                ? '✦'
-                                : name === 'game'
-                                  ? '⌘'
-                                  : name === 'developer'
-                                    ? '⌘'
-                                    : name === 'key'
-                                      ? '●'
-                                      : '•'}
-        </b>
-      ) : null}
     </span>
   );
 }
