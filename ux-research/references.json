@@ -1,0 +1,20 @@
+{
+  "platform": "iOS",
+  "sources": [
+    {
+      "title": "Apple Human Interface Guidelines — Motion",
+      "url": "https://developer.apple.com/design/human-interface-guidelines/motion",
+      "use": "Gesture fidelity, brevity, precision, cancellation, and reduced motion"
+    },
+    {
+      "title": "Enhance your UI animations and transitions — WWDC24",
+      "url": "https://developer.apple.com/videos/play/wwdc2024/10145/",
+      "use": "Gesture-driven and interruptible transition reference, especially from 11:20"
+    },
+    {
+      "title": "Apple Human Interface Guidelines — Tab bars",
+      "url": "https://developer.apple.com/design/human-interface-guidelines/tab-bars",
+      "use": "Persistent navigation, state preservation, selected-state semantics"
+    }
+  ]
+}
