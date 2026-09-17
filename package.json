@@ -1,6 +1,6 @@
 {
   "name": "pwacn",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@8.15.8",
   "scripts": {
@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck",
     "e2e": "playwright test",
-    "ux:capture": "node scripts/capture-ux.mjs"
+    "ux:capture": "node scripts/capture-ux.mjs",
+    "release:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm e2e"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

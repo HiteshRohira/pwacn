@@ -1,4 +1,4 @@
-import { gestures, shouldCommitGesture, springs } from '@pwacn/core';
+import { gestureCoordinator, gestures, shouldCommitGesture, springs } from '@pwacn/core';
 import { animate, motion, useMotionValue } from 'motion/react';
 import { useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
@@ -42,6 +42,7 @@ export function Swipeable({
     const current = session.current;
     if (!current || current.id !== event.pointerId) return;
     session.current = null;
+    gestureCoordinator.release(event.pointerId, 'swipe-action');
     const progress = Math.abs(x.get()) / actionWidth;
     const velocity = current.velocity * sign;
     const commit =
@@ -99,6 +100,16 @@ export function Swipeable({
           if (!current.active) {
             if (Math.hypot(dx, dy) < gestures.swipe.activationDistance) return;
             if (Math.abs(dy) >= Math.abs(dx) || dx * sign <= 0) {
+              session.current = null;
+              return;
+            }
+            if (
+              !gestureCoordinator.claim(event.pointerId, {
+                owner: 'swipe-action',
+                axis: 'x',
+                priority: 10,
+              })
+            ) {
               session.current = null;
               return;
             }

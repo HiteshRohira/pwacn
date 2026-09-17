@@ -20,5 +20,9 @@ export default defineConfig({
       reuseExistingServer: true,
     },
   ],
-  projects: [{ name: 'mobile-chrome', use: { ...devices['Pixel 7'] } }],
+  projects: [
+    { name: 'iphone-safari', use: { ...devices['iPhone 15 Pro'] } },
+    { name: 'pixel-chrome', use: { ...devices['Pixel 7'] } },
+    { name: 'galaxy-chrome', use: { ...devices['Galaxy S9+'] } },
+  ],
 });

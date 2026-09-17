@@ -1,6 +1,7 @@
 export * from './draggable';
 export * from './motion-surface';
 export * from './mobile-controls';
+export * from './mobile-primitives';
 export * from './navigation';
 export * from './pressable';
 export * from './sheet';

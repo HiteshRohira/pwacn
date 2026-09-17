@@ -1,17 +1,22 @@
 import {
+  gestureCoordinator,
+  gestures,
   springs,
   stackReducer,
   type Presentation,
   type StackEntry,
   type StackState,
 } from '@pwacn/core';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
@@ -28,6 +33,7 @@ type Navigation = {
     options?: { key?: string; pathname?: string; presentation?: Presentation },
   ) => void;
   canGoBack: boolean;
+  pathname: string;
 };
 
 const NavigationContext = createContext<Navigation | null>(null);
@@ -43,42 +49,150 @@ export function MobileStack({
   initialScreen,
   edgeBack = true,
   maxMountedScreens = 3,
+  history = 'browser',
 }: {
   initialScreen: ReactNode;
   edgeBack?: boolean;
   maxMountedScreens?: number;
+  history?: 'browser' | 'memory';
 }) {
   const reduced = usePrefersReducedMotion();
+  const dragControls = useDragControls();
+  const screenRefs = useRef(new Map<string, HTMLDivElement>());
+  const entryCache = useRef(new Map<string, StackEntry<ScreenData>>());
+  const suppressPop = useRef(false);
   const [state, dispatch] = useReducer(stackReducer<ScreenData>, {
     entries: [
-      { key: 'root', pathname: '/', presentation: 'push', data: { node: initialScreen } },
+      {
+        key: 'root',
+        pathname: typeof window === 'undefined' ? '/' : window.location.pathname,
+        presentation: 'push',
+        data: { node: initialScreen },
+      },
     ],
     direction: 'replace',
   } satisfies StackState<ScreenData>);
+  const entriesRef = useRef(state.entries);
+  const rootEntry = useRef(state.entries[0]);
+  entriesRef.current = state.entries;
   const makeEntry = useCallback(
     (
       node: ReactNode,
       options?: { key?: string; pathname?: string; presentation?: Presentation },
-    ): StackEntry<ScreenData> => ({
-      key: options?.key ?? crypto.randomUUID(),
-      pathname: options?.pathname ?? window.location.pathname,
-      presentation: options?.presentation ?? 'push',
-      data: { node },
-    }),
+    ): StackEntry<ScreenData> => {
+      const key = options?.key ?? crypto.randomUUID();
+      return {
+        key,
+        pathname:
+          options?.pathname ??
+          (options?.key
+            ? `/${encodeURIComponent(options.key)}`
+            : window.location.pathname),
+        presentation: options?.presentation ?? 'push',
+        data: { node },
+      };
+    },
     [],
   );
-  const navigation = useMemo<Navigation>(
-    () => ({
-      push: (node, options) =>
-        dispatch({ type: 'push', entry: makeEntry(node, options) }),
-      pop: () => dispatch({ type: 'pop' }),
-      replace: (node, options) =>
-        dispatch({ type: 'replace', entry: makeEntry(node, options) }),
+  const navigation = useMemo<Navigation>(() => {
+    const withTransition = (update: () => void) => {
+      const documentWithTransitions = document as Document & {
+        startViewTransition?: (callback: () => void) => unknown;
+      };
+      if (!reduced && documentWithTransitions.startViewTransition)
+        documentWithTransitions.startViewTransition(update);
+      else update();
+    };
+    const saveActiveScroll = () => {
+      const active = state.entries.at(-1);
+      const host = active ? screenRefs.current.get(active.key) : undefined;
+      const scroll = host?.querySelector<HTMLElement>(
+        '[data-pwacn-scroll],.settings-scroll,.detail-scroll',
+      );
+      if (active && scroll)
+        dispatch({
+          type: 'set-scroll',
+          key: active.key,
+          scrollPosition: scroll.scrollTop,
+        });
+    };
+    return {
+      push: (node, options) => {
+        saveActiveScroll();
+        const entry = makeEntry(node, options);
+        entryCache.current.set(entry.key, entry);
+        withTransition(() => dispatch({ type: 'push', entry }));
+        if (history === 'browser')
+          window.history.pushState(
+            { pwacn: true, pwacnKey: entry.key },
+            '',
+            entry.pathname,
+          );
+      },
+      pop: () => {
+        if (state.entries.length <= 1) return;
+        withTransition(() => dispatch({ type: 'pop' }));
+        if (history === 'browser') {
+          suppressPop.current = true;
+          window.history.back();
+        }
+      },
+      replace: (node, options) => {
+        const entry = makeEntry(node, options);
+        entryCache.current.set(entry.key, entry);
+        withTransition(() => dispatch({ type: 'replace', entry }));
+        if (history === 'browser')
+          window.history.replaceState(
+            { pwacn: true, pwacnKey: entry.key },
+            '',
+            entry.pathname,
+          );
+      },
       canGoBack: state.entries.length > 1,
-    }),
-    [makeEntry, state.entries.length],
-  );
+      pathname: state.entries.at(-1)?.pathname ?? '/',
+    };
+  }, [history, makeEntry, reduced, state.entries]);
   const visibleEntries = state.entries.slice(-Math.max(2, maxMountedScreens));
+
+  useEffect(() => {
+    if (history !== 'browser') return;
+    const root = rootEntry.current;
+    if (root) entryCache.current.set(root.key, root);
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), pwacn: true, pwacnKey: root?.key },
+      '',
+    );
+    const onPopState = (event: PopStateEvent) => {
+      if (suppressPop.current) {
+        suppressPop.current = false;
+        return;
+      }
+      const targetKey = event.state?.pwacnKey as string | undefined;
+      const entries = entriesRef.current;
+      const currentIndex = entries.findIndex((entry) => entry.key === targetKey);
+      if (currentIndex >= 0 && currentIndex < entries.length - 1) {
+        dispatch({ type: 'pop' });
+        return;
+      }
+      const cached = targetKey ? entryCache.current.get(targetKey) : undefined;
+      if (cached) dispatch({ type: 'push', entry: cached });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [history]);
+
+  const activeEntry = state.entries.at(-1);
+  useLayoutEffect(() => {
+    if (!activeEntry) return;
+    const frame = requestAnimationFrame(() => {
+      const host = screenRefs.current.get(activeEntry.key);
+      const scroll = host?.querySelector<HTMLElement>(
+        '[data-pwacn-scroll],.settings-scroll,.detail-scroll',
+      );
+      if (scroll) scroll.scrollTop = activeEntry.scrollPosition ?? 0;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeEntry]);
 
   return (
     <NavigationContext.Provider value={navigation}>
@@ -98,6 +212,10 @@ export function MobileStack({
             return (
               <motion.div
                 key={entry.key}
+                ref={(node) => {
+                  if (node) screenRefs.current.set(entry.key, node);
+                  else screenRefs.current.delete(entry.key);
+                }}
                 data-pwacn-screen={active ? 'active' : 'preserved'}
                 aria-hidden={!active}
                 inert={!active}
@@ -125,12 +243,18 @@ export function MobileStack({
                 drag={
                   active && edgeBack && state.entries.length > 1 && !modal ? 'x' : false
                 }
+                dragControls={dragControls}
+                dragListener={false}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={{ left: 0, right: 0.82 }}
                 dragDirectionLock
                 onDragEnd={(_, info) => {
+                  gestureCoordinator.reset();
                   const width = typeof window === 'undefined' ? 390 : window.innerWidth;
-                  if (info.offset.x > width * 0.35 || info.velocity.x > 600)
+                  if (
+                    info.offset.x > width * gestures.edgeBack.commitProgress ||
+                    info.velocity.x > gestures.edgeBack.velocityThreshold
+                  )
                     navigation.pop();
                 }}
                 style={{
@@ -148,6 +272,29 @@ export function MobileStack({
                 }}
               >
                 {entry.data?.node}
+                {active && edgeBack && state.entries.length > 1 && !modal ? (
+                  <div
+                    aria-hidden="true"
+                    data-pwacn-edge-back=""
+                    onPointerDown={(event) => {
+                      if (
+                        gestureCoordinator.claim(event.pointerId, {
+                          owner: 'edge-back',
+                          axis: 'x',
+                          priority: 100,
+                        })
+                      )
+                        dragControls.start(event);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      inset: `0 auto 0 0`,
+                      width: `max(${gestures.edgeBack.edgeWidth}px, env(safe-area-inset-left))`,
+                      zIndex: 100,
+                      touchAction: 'pan-y',
+                    }}
+                  />
+                ) : null}
               </motion.div>
             );
           })}

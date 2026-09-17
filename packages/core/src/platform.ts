@@ -15,8 +15,11 @@ export const supports = {
 
 export type HapticKind = 'selection' | 'light' | 'medium' | 'success' | 'warning';
 export type HapticAdapter = (kind: HapticKind) => void;
+export type SoundKind = 'tap' | 'open' | 'close' | 'success' | 'warning';
+export type SoundAdapter = (kind: SoundKind) => void;
 
 let adapter: HapticAdapter | undefined;
+let soundAdapter: SoundAdapter | undefined;
 
 const patterns: Record<HapticKind, number | number[]> = {
   selection: 8,
@@ -39,4 +42,14 @@ export const haptics = {
   impact: (weight: 'light' | 'medium' = 'light') => emit(weight),
   success: () => emit('success'),
   warning: () => emit('warning'),
+};
+
+/** Optional sound feedback. Silent by default until the host installs an adapter. */
+export const sounds = {
+  install(nextAdapter?: SoundAdapter) {
+    soundAdapter = nextAdapter;
+  },
+  play(kind: SoundKind = 'tap') {
+    soundAdapter?.(kind);
+  },
 };

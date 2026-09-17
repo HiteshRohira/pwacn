@@ -13,7 +13,21 @@ const groups: { label: string; items: [string, string][] }[] = [
       ['MotionSurface', 'A low-level physical surface with semantic mass and depth.'],
       ['Draggable', 'Velocity-aware drag tracking, direction lock, and elastic bounds.'],
       ['SwipeTabs', 'Gesture-driven tab paging with interruptible spring settling.'],
-      ['Viewport', 'Dynamic viewport and software keyboard measurements.'],
+      ['Viewport', 'Dynamic viewport, safe-area, and software keyboard measurements.'],
+    ],
+  },
+  {
+    label: 'controls',
+    items: [
+      ['MobileSwitch', 'An accessible switch with shared physical feedback.'],
+      ['SegmentedControl', 'A keyboard-readable single-choice control.'],
+      ['NavigationBar', 'Safe-area-aware compact and large-title navigation.'],
+      ['ContextMenu', 'Long-press and secondary-click actions on an ActionSheet.'],
+      ['Picker', 'A semantic mobile selection control.'],
+      ['Toast', 'Polite live-region feedback with reduced-motion behavior.'],
+      ['RefreshControl', 'Pull-to-refresh with scroll-boundary ownership.'],
+      ['ReorderableList', 'Touch-friendly interruptible list reordering.'],
+      ['Carousel', 'Accessible native scroll-snap paging.'],
     ],
   },
   {
@@ -36,9 +50,10 @@ const groups: { label: string; items: [string, string][] }[] = [
   {
     label: 'tooling',
     items: [
-      ['CLI + registry', 'Own the source with init, add, and diff workflows.'],
-      ['ESLint plugin', 'Four rules that enforce coherent motion conventions.'],
+      ['CLI + registry', 'Own the source with init, add, diff, list, and doctor.'],
+      ['ESLint plugin', 'Five rules that enforce coherent motion conventions.'],
       ['Haptics', 'Conservative web vibration with a custom adapter escape hatch.'],
+      ['Sounds', 'Optional host-installed sound feedback with a silent web default.'],
     ],
   },
 ];
@@ -135,11 +150,13 @@ const details: Record<string, Detail> = {
   viewport: {
     package: '@pwacn/react',
     status: 'stable prototype',
-    example: `const viewport = useMobileViewport();\n\n// width, height, keyboardHeight, keyboardOpen`,
+    example: `const viewport = useMobileViewport();\n\n// size, keyboard, offset, and safe-area insets`,
     api: [
       ['width / height', 'number', 'visual viewport'],
       ['keyboardHeight', 'number', '0'],
       ['keyboardOpen', 'boolean', 'false'],
+      ['safeArea', '{ top, right, bottom, left }', 'CSS env()'],
+      ['offsetTop', 'number', '0'],
     ],
     notes: [
       'Prefers VisualViewport and falls back to window dimensions.',
@@ -159,9 +176,9 @@ const details: Record<string, Detail> = {
       ['title', 'string', "'Sheet'"],
     ],
     notes: [
-      'Velocity-aware handle dismissal with elastic overdrag.',
-      'Locks page scroll and restores focus on close.',
-      'Accounts for safe-area and software-keyboard viewport changes.',
+      'Projects release velocity to the nearest stable snap point.',
+      'Hands downward scroll to the sheet at the content boundary.',
+      'Traps focus, inerts the background, and restores focus on close.',
     ],
   },
   actionsheet: {
@@ -219,11 +236,13 @@ const details: Record<string, Detail> = {
       ['push', '(node, options) => void', '—'],
       ['pop', '() => void', '—'],
       ['replace', '(node, options) => void', '—'],
+      ['history', "'browser' | 'memory'", "'browser'"],
     ],
     notes: [
       'Direction comes from stack semantics, never pathname guessing.',
       'Distinguishes push and modal presentation geometry.',
-      'Keeps the public navigation API deliberately small.',
+      'Synchronizes browser history and restores per-screen scroll positions.',
+      'Interactive back begins only inside the leading-edge capture region.',
     ],
   },
   sharedelement: {
@@ -258,11 +277,13 @@ const details: Record<string, Detail> = {
   'cli--registry': {
     package: 'pwacn',
     status: 'working prototype',
-    example: `npx pwacn init\nnpx pwacn add pressable sheet\nnpx pwacn diff`,
+    example: `npx pwacn init\nnpx pwacn list\nnpx pwacn add pressable sheet\nnpx pwacn diff\nnpx pwacn doctor`,
     api: [
       ['init', 'command', 'creates pwacn.json'],
       ['add', 'command', 'copies dependencies'],
       ['diff', 'command', 'compares hashes'],
+      ['list', 'command', 'shows registry and install state'],
+      ['doctor', 'command', 'validates installed files'],
     ],
     notes: [
       'Generated source belongs to the consumer.',
@@ -278,6 +299,7 @@ const details: Record<string, Detail> = {
       ['no-arbitrary-spring', 'rule', 'warn'],
       ['prefer-pressable', 'rule', 'warn'],
       ['require-reduced-motion', 'rule', 'warn'],
+      ['prefer-mobile-surface', 'rule', 'warn'],
       ['no-arbitrary-transition-duration', 'rule', 'warn'],
     ],
     notes: [
@@ -350,8 +372,7 @@ function Footer() {
 
 function ComponentPage({ slug }: { slug: string }) {
   const item = componentList.find((candidate) => candidate.slug === slug);
-  const detail = details[slug];
-  if (!item || !detail) {
+  if (!item) {
     return (
       <div className="site-shell">
         <Header />
@@ -368,6 +389,19 @@ function ComponentPage({ slug }: { slug: string }) {
       </div>
     );
   }
+  const detail =
+    details[slug] ??
+    ({
+      package: slug === 'sounds' ? '@pwacn/core' : '@pwacn/react',
+      status: 'experimental',
+      example: `import { ${item.name.replaceAll(' ', '')} } from '${slug === 'sounds' ? '@pwacn/core' : '@pwacn/react'}';`,
+      api: [['See TypeScript declarations', 'typed API', '—']],
+      notes: [
+        item.description,
+        'Uses pwacn motion, accessibility, and reduced-motion conventions.',
+        'Exercised in the interaction playground before promotion to stable.',
+      ],
+    } satisfies Detail);
   const index = componentList.indexOf(item);
   const previous = componentList[index - 1];
   const next = componentList[index + 1];

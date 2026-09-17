@@ -1,4 +1,4 @@
-const CACHE = 'settings-playground-v1';
+const CACHE = 'pwacn-playground-v2';
 self.addEventListener('install', (event) =>
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(['/', '/manifest.webmanifest'])),

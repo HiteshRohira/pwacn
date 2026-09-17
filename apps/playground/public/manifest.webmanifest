@@ -1,10 +1,9 @@
 {
-  "name": "Settings — a pwacn interaction benchmark",
-  "short_name": "Settings",
-  "description": "A native-feeling iPhone Settings benchmark built with pwacn.",
+  "name": "pwacn Interaction Lab",
+  "short_name": "pwacn Lab",
+  "description": "An instrumented mobile interaction tuning lab for pwacn.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f2f2f7",
-  "theme_color": "#f2f2f7",
-  "orientation": "portrait-primary"
+  "background_color": "#d9d7cc",
+  "theme_color": "#d9d7cc"
 }

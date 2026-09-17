@@ -1,92 +1,105 @@
 # pwacn
 
-A mobile-first React primitive framework for PWAs that should feel physically native.
+Mobile interaction primitives for React PWAs: native mechanics, application-owned visuals.
 
-This repository contains the deployable v0 interaction system described in
-[`PLAN.md`](./PLAN.md): experimental behavioral tokens, React motion primitives, mobile
-surfaces and navigation, open-code tooling, documentation, and an installable kitchen-sink
-PWA.
+pwacn 0.1 provides one motion vocabulary across pressing, dragging, swiping, sheets,
+navigation, controls, feedback, safe areas, keyboards, and reduced motion. The repository
+contains two deliberately separate products:
 
-## Workspace
+- `apps/playground` — an instrumented interaction and tuning laboratory.
+- `apps/kitchen-sink` — an installable iPhone Settings benchmark built from pwacn.
 
-```text
-apps/playground   Interactive Vite lab and tuning bench
-apps/kitchen-sink Installable PWA build of the interaction lab
-apps/docs         Public component and tooling reference
-packages/core     Framework-agnostic physics, depth, and gesture tokens
-packages/react    React primitives, surfaces, navigation, and viewport utilities
-packages/cli      Open-code init, add, and diff commands
-packages/eslint-plugin  Motion convention rules
-registry          Source templates and dependency metadata
-```
+## Packages
 
-## Run locally
+| Package                | Purpose                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| `@pwacn/core`          | Physics, depth, platform feedback, gesture tokens, arbitration, and stack state |
+| `@pwacn/react`         | React controls, surfaces, navigation, feedback, and viewport hooks              |
+| `pwacn`                | Open-code registry CLI                                                          |
+| `@pwacn/eslint-plugin` | Guardrails for coherent motion and mobile interaction surfaces                  |
 
-Requires Node 20+ and pnpm.
+## Run and verify
+
+Requires Node 20+ and pnpm 8.
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev                 # interaction playground
+pnpm dev:kitchen-sink    # Settings PWA
 pnpm dev:docs
-pnpm dev:kitchen-sink
+pnpm release:check       # format, lint, types, unit, build, multi-device E2E
 ```
 
-The playground opens at `http://localhost:5173`. Its tuning bench is available at
-`/tuning`.
+## React API
 
-## Verify
+Foundations and controls:
 
-```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm build
-pnpm e2e
-```
+- `Pressable`, `MotionSurface`, `Draggable`, `Swipeable`, `SwipeTabs`
+- `MobileSwitch`, `SegmentedControl`, `Picker`
+- `useMobileViewport`, including keyboard, viewport offset, and safe-area measurements
+- `usePrefersReducedMotion`
 
-The end-to-end suite uses a mobile Chromium profile. Install the browser once with
-`pnpm exec playwright install chromium` if it is not already present.
+Spatial surfaces and feedback:
 
-## Current API surface
+- `BottomSheet`, `SheetScrollArea`, `ActionSheet`, `FullScreenModal`
+- `ContextMenu`, `ToastProvider`, `useToast`, `RefreshControl`
+- `ReorderableList`, `Carousel`, `NavigationBar`
 
-- `Pressable` and `MotionSurface`
-- `Draggable`, `Swipeable`, and `SwipeTabs`
-- `BottomSheet`, `ActionSheet`, and `FullScreenModal`
-- `MobileStack`, `useMobileStack`, and `SharedElement`
-- `useMobileViewport` and `usePrefersReducedMotion`
-- semantic mass, spring, gesture, depth, capability, and haptic tokens
+Navigation:
+
+- `MobileStack`, `useMobileStack`, `SharedElement`
+- preserved screens and scroll positions
+- browser history synchronization and progressive View Transitions
+- leading-edge-only interactive back navigation
 
 ```tsx
-import { Pressable } from '@pwacn/react';
+import { BottomSheet, Pressable, SheetScrollArea } from '@pwacn/react';
 
-<Pressable onPress={save}>Save</Pressable>;
+<Pressable onPress={() => setOpen(true)}>Open comments</Pressable>
+<BottomSheet
+  open={open}
+  onOpenChange={setOpen}
+  snapPoints={[0.35, 0.62, 0.92]}
+  onSnapChange={setSnap}
+  title="Comments"
+>
+  <SheetScrollArea>{comments}</SheetScrollArea>
+</BottomSheet>
 ```
 
-`Pressable` responds on pointer-down, cancels after pointer drift or boundary exit, supports
-native button and custom-element keyboard semantics, honors disabled state, and uses a
-coherent reduced-motion fallback. Values in `@pwacn/core` remain experimental until they
-have been tuned on real mobile hardware.
+## Gesture ownership
 
-## Open-code workflow
+`GestureCoordinator` arbitrates nested interactions. Edge-back has the highest priority,
+sheets take vertical ownership at the top of a scroll area, swipe actions own committed
+horizontal rows, and tab paging yields to all of them. Components release ownership on
+completion or cancellation so a new pointer sequence can interrupt immediately.
+
+## Open-code CLI
 
 ```bash
 npx pwacn init
-npx pwacn add pressable sheet swipe-action stack
+npx pwacn list
+npx pwacn add pressable sheet action-sheet switch toast
 npx pwacn diff
+npx pwacn doctor
 ```
 
-Registry dependency resolution is automatic. The generated files live in the consumer's
-source tree and can be changed freely.
+Registry dependencies install automatically. `add` refuses to overwrite locally modified
+files unless `--force` is passed.
 
-## Autonomous UX loop
+## Accessibility and devices
 
-The repeatable native-interaction review lives in [`ux-research`](./ux-research). Capture
-the kitchen-sink PWA on a mobile browser profile with:
+Sheets use modal semantics, focus containment, background inerting, Escape dismissal, and
+focus restoration. Controls expose native switch, radio, tab, dialog, status, and carousel
+semantics. Every animated primitive has a reduced-motion path.
 
-```bash
-pnpm ux:capture
-```
+The browser release matrix covers iPhone Safari, Pixel Chrome, and Galaxy Chrome profiles.
+Physical hardware and screen-reader sign-off follows [DEVICE_TESTING.md](./DEVICE_TESTING.md).
 
-Each ignored run contains a fixed-viewport screenshot and interaction video. Benchmarks
-record the reference behavior, failure severity, implementation changes, and subsequent
-audit so motion regressions are judged as interaction failures rather than decoration.
+## Release
+
+The four public packages are versioned together. Run `pnpm release:check`, update
+[CHANGELOG.md](./CHANGELOG.md), publish from a clean main branch, then tag the commit as
+`v0.1.0`. CI runs the same release gate for pushes and pull requests.
+
+The long-form product rationale and roadmap are in [PLAN.md](./PLAN.md).

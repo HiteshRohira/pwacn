@@ -1,12 +1,15 @@
 {
   "name": "pwacn",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "pwacn": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsup --config tsup.config.ts && cp -R ../../registry dist/registry",
+    "build": "tsup --config tsup.config.ts && node scripts/copy-registry.mjs",
     "typecheck": "tsc --noEmit"
   },
   "files": [

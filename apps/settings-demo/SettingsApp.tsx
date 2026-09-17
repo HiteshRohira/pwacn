@@ -5,6 +5,8 @@ import {
   MobileSwitch,
   Pressable,
   SegmentedControl,
+  ToastProvider,
+  useToast,
   useMobileStack,
 } from '@pwacn/react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -488,40 +490,583 @@ function DetailScreen({ title, children }: { title: string; children?: ReactNode
       <ScreenHeader title={title} />
       <main className="detail-scroll">
         <h1>{title}</h1>
-        {children ?? <GenericSettings title={title} />}
+        {children ?? <FunctionalSettings title={title} />}
       </main>
       <HomeIndicator />
     </div>
   );
 }
 
-function GenericSettings({ title }: { title: string }) {
-  const [enabled, setEnabled] = useState(true);
-  const [sync, setSync] = useState(false);
+type DetailRow =
+  | { label: string; kind: 'toggle'; initial?: boolean; note?: string }
+  | { label: string; kind: 'value'; value: string; note?: string };
+
+const detailContent: Record<
+  string,
+  { footer?: string; sections: { title?: string; rows: DetailRow[] }[] }
+> = {
+  'Mobile Service': {
+    footer: 'Carrier settings and mobile data usage are simulated in this benchmark.',
+    sections: [
+      {
+        rows: [
+          { label: 'Mobile Data', kind: 'toggle', initial: true },
+          { label: 'Personal Hotspot', kind: 'value', value: 'Off' },
+        ],
+      },
+      {
+        title: 'SIMS',
+        rows: [
+          { label: 'Primary', kind: 'value', value: 'On' },
+          { label: 'Add eSIM', kind: 'value', value: '' },
+        ],
+      },
+      {
+        title: 'MOBILE DATA',
+        rows: [
+          { label: 'Mobile Data Options', kind: 'value', value: 'Roaming Off' },
+          { label: 'Network Selection', kind: 'value', value: 'Automatic' },
+        ],
+      },
+    ],
+  },
+  'Personal Hotspot': {
+    sections: [
+      {
+        rows: [
+          { label: 'Allow Others to Join', kind: 'toggle' },
+          { label: 'Wi-Fi Password', kind: 'value', value: '••••••••' },
+          { label: 'Maximise Compatibility', kind: 'toggle' },
+        ],
+      },
+    ],
+  },
+  Accessibility: {
+    sections: [
+      {
+        title: 'VISION',
+        rows: [
+          { label: 'VoiceOver', kind: 'value', value: 'Off' },
+          { label: 'Zoom', kind: 'value', value: 'Off' },
+          { label: 'Display & Text Size', kind: 'value', value: '' },
+          { label: 'Motion', kind: 'value', value: '' },
+        ],
+      },
+      {
+        title: 'PHYSICAL AND MOTOR',
+        rows: [
+          { label: 'Touch', kind: 'value', value: '' },
+          { label: 'Face ID & Attention', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  'Action Button': {
+    footer: 'Press and hold the Action button to perform the selected action.',
+    sections: [
+      {
+        rows: [
+          { label: 'Silent Mode', kind: 'toggle', initial: true },
+          { label: 'Show in Status Bar', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  Camera: {
+    sections: [
+      {
+        title: 'CAMERA CAPTURE',
+        rows: [
+          { label: 'Formats', kind: 'value', value: 'High Efficiency' },
+          { label: 'Record Video', kind: 'value', value: '4K at 30 fps' },
+          { label: 'Record Slo-mo', kind: 'value', value: '1080p at 120 fps' },
+        ],
+      },
+      {
+        rows: [
+          { label: 'Grid', kind: 'toggle' },
+          { label: 'Level', kind: 'toggle', initial: true },
+          { label: 'Scan QR Codes', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  'Control Centre': {
+    sections: [
+      {
+        rows: [
+          { label: 'Access Within Apps', kind: 'toggle', initial: true },
+          { label: 'Reset Control Centre', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  'Home Screen & App Library': {
+    sections: [
+      {
+        title: 'NEWLY DOWNLOADED APPS',
+        rows: [
+          { label: 'Add to Home Screen', kind: 'toggle', initial: true },
+          { label: 'App Library Only', kind: 'toggle' },
+        ],
+      },
+      {
+        title: 'NOTIFICATION BADGES',
+        rows: [{ label: 'Show in App Library', kind: 'toggle', initial: true }],
+      },
+    ],
+  },
+  Search: {
+    sections: [
+      {
+        rows: [
+          { label: 'Show Recent Searches', kind: 'toggle', initial: true },
+          { label: 'Show Related Content', kind: 'toggle', initial: true },
+        ],
+      },
+      {
+        title: 'BEFORE SEARCHING',
+        rows: [
+          { label: 'Show Suggestions', kind: 'toggle', initial: true },
+          { label: 'Show Recents', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  StandBy: {
+    sections: [
+      {
+        rows: [
+          { label: 'StandBy', kind: 'toggle', initial: true },
+          { label: 'Display', kind: 'value', value: '' },
+          { label: 'Night Mode', kind: 'toggle', initial: true },
+          { label: 'Show Notifications', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  Wallpaper: {
+    sections: [
+      {
+        rows: [
+          { label: 'Add New Wallpaper', kind: 'value', value: '' },
+          { label: 'Dark Appearance Dims Wallpaper', kind: 'toggle' },
+        ],
+      },
+    ],
+  },
+  Notifications: {
+    sections: [
+      {
+        rows: [
+          { label: 'Scheduled Summary', kind: 'value', value: 'Off' },
+          { label: 'Show Previews', kind: 'value', value: 'Always' },
+          { label: 'Screen Sharing', kind: 'value', value: '' },
+        ],
+      },
+      {
+        title: 'NOTIFICATION STYLE',
+        rows: [
+          { label: 'App Store', kind: 'value', value: 'Banners, Sounds, Badges' },
+          { label: 'Calendar', kind: 'value', value: 'Banners, Sounds' },
+          { label: 'Messages', kind: 'value', value: 'Banners, Sounds, Badges' },
+        ],
+      },
+    ],
+  },
+  'Sounds & Haptics': {
+    sections: [
+      {
+        rows: [
+          { label: 'Ringtone', kind: 'value', value: 'Reflection' },
+          { label: 'Text Tone', kind: 'value', value: 'Note' },
+          { label: 'New Voicemail', kind: 'value', value: 'Tri-tone' },
+        ],
+      },
+      {
+        title: 'SYSTEM SOUNDS & HAPTICS',
+        rows: [
+          { label: 'Keyboard Feedback', kind: 'value', value: 'Sound' },
+          { label: 'Lock Sound', kind: 'toggle', initial: true },
+          { label: 'System Haptics', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  Focus: {
+    sections: [
+      {
+        rows: [
+          { label: 'Do Not Disturb', kind: 'value', value: 'Off' },
+          { label: 'Personal', kind: 'value', value: 'Off' },
+          { label: 'Sleep', kind: 'value', value: 'Off' },
+          { label: 'Work', kind: 'value', value: 'Off' },
+        ],
+      },
+      {
+        rows: [
+          { label: 'Share Across Devices', kind: 'toggle', initial: true },
+          { label: 'Focus Status', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  'Screen Time': {
+    sections: [
+      {
+        rows: [
+          { label: 'App & Website Activity', kind: 'toggle', initial: true },
+          { label: 'Downtime', kind: 'value', value: 'Off' },
+          { label: 'App Limits', kind: 'value', value: 'Off' },
+          { label: 'Always Allowed', kind: 'value', value: '' },
+        ],
+      },
+      { rows: [{ label: 'Share Across Devices', kind: 'toggle', initial: true }] },
+    ],
+  },
+  Siri: {
+    sections: [
+      {
+        title: 'TALK TO SIRI',
+        rows: [
+          { label: 'Talk to Siri', kind: 'value', value: '“Siri” or “Hey Siri”' },
+          { label: 'Press Side Button for Siri', kind: 'toggle', initial: true },
+          { label: 'Allow Siri When Locked', kind: 'toggle', initial: true },
+        ],
+      },
+      {
+        rows: [
+          { label: 'Language', kind: 'value', value: 'English (India)' },
+          { label: 'Siri Voice', kind: 'value', value: 'Voice 2' },
+        ],
+      },
+    ],
+  },
+  'Face ID & Passcode': {
+    sections: [
+      {
+        title: 'USE FACE ID FOR',
+        rows: [
+          { label: 'iPhone Unlock', kind: 'toggle', initial: true },
+          { label: 'iTunes & App Store', kind: 'toggle', initial: true },
+          { label: 'Wallet & Apple Pay', kind: 'toggle', initial: true },
+          { label: 'Password AutoFill', kind: 'toggle', initial: true },
+        ],
+      },
+      {
+        rows: [
+          { label: 'Require Attention for Face ID', kind: 'toggle', initial: true },
+          { label: 'Attention Aware Features', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  'Emergency SOS': {
+    sections: [
+      {
+        rows: [
+          { label: 'Call with Hold and Release', kind: 'toggle', initial: true },
+          { label: 'Call with 5 Button Presses', kind: 'toggle' },
+          { label: 'Call Quietly', kind: 'toggle' },
+        ],
+      },
+      { rows: [{ label: 'Emergency Contacts', kind: 'value', value: '1' }] },
+    ],
+  },
+  'Exposure Notifications': {
+    sections: [
+      {
+        rows: [
+          { label: 'Exposure Notifications', kind: 'toggle' },
+          { label: 'Availability Alerts', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  'Privacy & Security': {
+    sections: [
+      {
+        rows: [
+          { label: 'Location Services', kind: 'value', value: 'On' },
+          { label: 'Tracking', kind: 'value', value: '' },
+          { label: 'Contacts', kind: 'value', value: '' },
+          { label: 'Photos', kind: 'value', value: '' },
+          { label: 'Bluetooth', kind: 'value', value: '' },
+        ],
+      },
+      {
+        title: 'SECURITY',
+        rows: [
+          { label: 'Safety Check', kind: 'value', value: '' },
+          { label: 'Lockdown Mode', kind: 'value', value: 'Off' },
+        ],
+      },
+    ],
+  },
+  'Game Center': {
+    sections: [
+      {
+        rows: [
+          { label: 'Game Center', kind: 'toggle', initial: true },
+          { label: 'Nickname', kind: 'value', value: 'Hitesh' },
+          { label: 'Profile Privacy', kind: 'value', value: 'Friends Only' },
+        ],
+      },
+    ],
+  },
+  iCloud: {
+    sections: [
+      {
+        rows: [
+          { label: 'Storage', kind: 'value', value: '4.2 GB of 5 GB' },
+          { label: 'Saved to iCloud', kind: 'value', value: '12 Apps' },
+          { label: 'iCloud Backup', kind: 'value', value: 'On' },
+          { label: 'Private Relay', kind: 'value', value: 'Off' },
+        ],
+      },
+    ],
+  },
+  'Wallet & Apple Pay': {
+    sections: [
+      {
+        rows: [
+          { label: 'Add Card', kind: 'value', value: '' },
+          { label: 'Double-Click Side Button', kind: 'toggle', initial: true },
+          { label: 'Express Travel Card', kind: 'value', value: 'None' },
+        ],
+      },
+    ],
+  },
+  Apps: {
+    sections: [
+      {
+        rows: [
+          { label: 'Default Apps', kind: 'value', value: '' },
+          { label: 'App Store', kind: 'value', value: '' },
+          { label: 'Calendar', kind: 'value', value: '' },
+          { label: 'Camera', kind: 'value', value: '' },
+          { label: 'Messages', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  About: {
+    sections: [
+      {
+        rows: [
+          { label: 'Name', kind: 'value', value: 'Hitesh’s iPhone' },
+          { label: 'iOS Version', kind: 'value', value: '18.6.2' },
+          { label: 'Model Name', kind: 'value', value: 'iPhone 15 Pro' },
+          { label: 'Model Number', kind: 'value', value: 'MTV03HN/A' },
+          { label: 'Serial Number', kind: 'value', value: 'D2K•••••••' },
+        ],
+      },
+      {
+        rows: [
+          { label: 'Songs', kind: 'value', value: '326' },
+          { label: 'Videos', kind: 'value', value: '18' },
+          { label: 'Photos', kind: 'value', value: '2,418' },
+          { label: 'Applications', kind: 'value', value: '94' },
+          { label: 'Capacity', kind: 'value', value: '256 GB' },
+          { label: 'Available', kind: 'value', value: '118.7 GB' },
+        ],
+      },
+    ],
+  },
+  'Software Update': {
+    footer: 'iOS automatically installs security responses and system files.',
+    sections: [
+      {
+        rows: [
+          { label: 'iOS 18.6.2', kind: 'value', value: 'Up to Date' },
+          { label: 'Automatic Updates', kind: 'value', value: 'On' },
+          { label: 'Beta Updates', kind: 'value', value: 'Off' },
+        ],
+      },
+    ],
+  },
+  'iPhone Storage': {
+    sections: [
+      {
+        rows: [
+          { label: 'Used', kind: 'value', value: '137.3 GB of 256 GB' },
+          { label: 'Offload Unused Apps', kind: 'toggle' },
+        ],
+      },
+      {
+        title: 'RECOMMENDATIONS',
+        rows: [
+          { label: 'Review Downloaded Videos', kind: 'value', value: '2.4 GB' },
+          { label: 'Messages', kind: 'value', value: '8.1 GB' },
+          { label: 'Photos', kind: 'value', value: '32.6 GB' },
+        ],
+      },
+    ],
+  },
+  'AppleCare & Warranty': {
+    sections: [
+      {
+        rows: [
+          { label: 'This Device', kind: 'value', value: 'Limited Warranty' },
+          { label: 'Coverage Details', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  AirDrop: {
+    footer: 'AirDrop lets you share instantly with nearby Apple devices.',
+    sections: [
+      {
+        rows: [
+          { label: 'Receiving Off', kind: 'toggle' },
+          { label: 'Contacts Only', kind: 'toggle', initial: true },
+          { label: 'Everyone for 10 Minutes', kind: 'toggle' },
+        ],
+      },
+      { rows: [{ label: 'Bringing Devices Together', kind: 'toggle', initial: true }] },
+    ],
+  },
+  'AirPlay & Continuity': {
+    sections: [
+      {
+        rows: [
+          { label: 'Automatically AirPlay', kind: 'value', value: 'Ask' },
+          { label: 'Transfer to HomePod', kind: 'toggle', initial: true },
+          { label: 'Handoff', kind: 'toggle', initial: true },
+          { label: 'Continuity Camera', kind: 'toggle', initial: true },
+        ],
+      },
+    ],
+  },
+  'Picture in Picture': {
+    sections: [
+      { rows: [{ label: 'Start PiP Automatically', kind: 'toggle', initial: true }] },
+    ],
+  },
+  'Language & Region': {
+    sections: [
+      {
+        rows: [
+          { label: 'Preferred Languages', kind: 'value', value: 'English' },
+          { label: 'Region', kind: 'value', value: 'India' },
+          { label: 'Calendar', kind: 'value', value: 'Gregorian' },
+          { label: 'Temperature System', kind: 'value', value: '°C' },
+          { label: 'Measurement System', kind: 'value', value: 'Metric' },
+        ],
+      },
+    ],
+  },
+  Dictionary: {
+    sections: [
+      {
+        rows: [
+          { label: 'Apple Dictionary', kind: 'toggle', initial: true },
+          { label: 'English', kind: 'toggle', initial: true },
+          { label: 'Hindi–English', kind: 'toggle' },
+        ],
+      },
+    ],
+  },
+  Fonts: {
+    footer: 'Fonts can be downloaded from the App Store and used in documents.',
+    sections: [{ rows: [{ label: 'No Fonts Installed', kind: 'value', value: '' }] }],
+  },
+  'Transfer or Reset iPhone': {
+    sections: [
+      {
+        rows: [
+          { label: 'Prepare for New iPhone', kind: 'value', value: 'Get Started' },
+          { label: 'Reset', kind: 'value', value: '' },
+          { label: 'Erase All Content and Settings', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  'Legal & Regulatory': {
+    sections: [
+      {
+        rows: [
+          { label: 'Legal Notices', kind: 'value', value: '' },
+          { label: 'RF Exposure', kind: 'value', value: '' },
+          { label: 'Regulatory', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+  Family: {
+    sections: [
+      {
+        rows: [
+          { label: 'Hitesh Kumar', kind: 'value', value: 'Organiser' },
+          { label: 'Add Member', kind: 'value', value: '' },
+          { label: 'Subscriptions', kind: 'value', value: '' },
+          { label: 'Purchase Sharing', kind: 'value', value: 'On' },
+          { label: 'Location Sharing', kind: 'value', value: 'On' },
+        ],
+      },
+    ],
+  },
+  Developer: {
+    sections: [
+      {
+        rows: [
+          { label: 'Developer Mode', kind: 'toggle' },
+          { label: 'Logging', kind: 'value', value: '' },
+          { label: 'Networking', kind: 'value', value: '' },
+          { label: 'Graphics', kind: 'value', value: '' },
+        ],
+      },
+    ],
+  },
+};
+
+function FunctionalSettings({ title }: { title: string }) {
+  const definition = detailContent[title] ?? {
+    footer: `Changes to ${title} are kept for this demo session.`,
+    sections: [{ rows: [{ label: title, kind: 'toggle' as const, initial: true }] }],
+  };
+  const initial = Object.fromEntries(
+    definition.sections
+      .flatMap((section) => section.rows)
+      .filter((row) => row.kind === 'toggle')
+      .map((row) => [row.label, row.initial ?? false]),
+  );
+  const [toggles, setToggles] = useState<Record<string, boolean>>(initial);
+  const toast = useToast();
   return (
     <>
-      <Group>
-        <SettingsRow label={title} toggle={{ checked: enabled, onChange: setEnabled }} />
-      </Group>
-      <Group title="OPTIONS">
-        <SettingsRow
-          label="Allow Access"
-          value="While Using"
-          onPress={() => haptics.selection()}
-        />
-        <SettingsRow
-          label="Notifications"
-          value="On"
-          onPress={() => haptics.selection()}
-        />
-        <SettingsRow
-          label="Sync Across Devices"
-          toggle={{ checked: sync, onChange: setSync }}
-        />
-      </Group>
-      <Group footer={`These settings control how ${title} works on this iPhone.`}>
-        <SettingsRow label="About & Privacy" onPress={() => haptics.selection()} />
-      </Group>
+      {definition.sections.map((section, index) => (
+        <Group
+          key={`${title}-${index}`}
+          title={section.title}
+          footer={
+            index === definition.sections.length - 1 ? definition.footer : undefined
+          }
+        >
+          {section.rows.map((row) =>
+            row.kind === 'toggle' ? (
+              <SettingsRow
+                key={row.label}
+                label={row.label}
+                note={row.note}
+                toggle={{
+                  checked: toggles[row.label] ?? false,
+                  onChange: (checked) =>
+                    setToggles((current) => ({ ...current, [row.label]: checked })),
+                }}
+              />
+            ) : (
+              <SettingsRow
+                key={row.label}
+                label={row.label}
+                note={row.note}
+                value={row.value}
+                onPress={() => toast({ message: row.label })}
+              />
+            ),
+          )}
+        </Group>
+      ))}
     </>
   );
 }
@@ -673,6 +1218,11 @@ function DisplayScreen() {
   const [appearance, setAppearance] = useState<'light' | 'dark'>('light');
   const [automatic, setAutomatic] = useState(false);
   const [trueTone, setTrueTone] = useState(true);
+  const [raiseToWake, setRaiseToWake] = useState(true);
+  useEffect(() => {
+    document.documentElement.style.colorScheme = appearance;
+    document.documentElement.dataset.pwacnTheme = appearance;
+  }, [appearance]);
   return (
     <DetailScreen title="Display & Brightness">
       <Group title="APPEARANCE">
@@ -724,7 +1274,7 @@ function DisplayScreen() {
         />
         <SettingsRow
           label="Raise to Wake"
-          toggle={{ checked: true, onChange: () => {} }}
+          toggle={{ checked: raiseToWake, onChange: setRaiseToWake }}
         />
       </Group>
     </DetailScreen>
@@ -734,6 +1284,7 @@ function DisplayScreen() {
 function BatteryScreen() {
   const [lowPower, setLowPower] = useState(false);
   const [percent, setPercent] = useState(true);
+  const [period, setPeriod] = useState<'day' | 'week'>('day');
   return (
     <DetailScreen title="Battery">
       <Group>
@@ -749,8 +1300,8 @@ function BatteryScreen() {
       <section className="battery-card">
         <h3>Last 24 Hours</h3>
         <SegmentedControl
-          value="day"
-          onValueChange={() => {}}
+          value={period}
+          onValueChange={setPeriod}
           label="Battery period"
           items={[
             { value: 'day', label: 'Last 24 Hours' },
@@ -1023,15 +1574,17 @@ function SettingsHome() {
 
 export function SettingsApp() {
   return (
-    <div className="settings-stage">
-      <div className="device-shell">
-        <MobileStack initialScreen={<SettingsHome />} />
+    <ToastProvider>
+      <div className="settings-stage">
+        <div className="device-shell">
+          <MobileStack initialScreen={<SettingsHome />} />
+        </div>
+        <aside className="demo-caption">
+          <strong>pwacn</strong>
+          <span>Settings interaction benchmark</span>
+          <small>Press rows · drag from the left edge · toggle controls</small>
+        </aside>
       </div>
-      <aside className="demo-caption">
-        <strong>pwacn</strong>
-        <span>Settings interaction benchmark</span>
-        <small>Press rows · drag from the left edge · toggle controls</small>
-      </aside>
-    </div>
+    </ToastProvider>
   );
 }

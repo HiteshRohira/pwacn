@@ -37,6 +37,7 @@ export default tseslint.config(
   {
     files: [
       'apps/docs/src/main.tsx',
+      'packages/react/src/mobile-primitives.tsx',
       'packages/react/src/navigation.tsx',
       'registry/**/*.tsx',
     ],

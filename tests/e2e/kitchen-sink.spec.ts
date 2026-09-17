@@ -34,3 +34,19 @@ test('specialized detail screens and account action sheet work', async ({ page }
   await page.getByRole('button', { name: 'Cancel' }).tap();
   await expect(page.getByRole('dialog', { name: 'Account actions' })).toBeHidden();
 });
+
+test('detail content and appearance controls are functional', async ({ page }) => {
+  await page.goto(url);
+  await page.getByRole('button', { name: /General/ }).tap();
+  await page.getByRole('button', { name: /Software Update/ }).tap();
+  await expect(page.getByText('Up to Date')).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'General', level: 1 })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByText('Up to Date')).toBeVisible();
+  await page.goBack();
+  await page.goBack();
+  await page.getByRole('button', { name: /Display & Brightness/ }).tap();
+  await page.getByRole('button', { name: 'Dark' }).tap();
+  await expect(page.locator('html')).toHaveAttribute('data-pwacn-theme', 'dark');
+});

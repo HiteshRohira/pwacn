@@ -1,1 +1,336 @@
-/* The Settings benchmark owns its visual system in apps/settings-demo. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&display=swap');
+:root {
+  font-family: Manrope, sans-serif;
+  color: #181a15;
+  background: #d9d7cc;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+#root {
+  transform-origin: center top;
+  transition: transform 320ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+html[data-pwacn-sheet-open] #root {
+  transform: scale(0.975) translateY(7px);
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e8e6db, #c8c6ba);
+}
+button,
+select {
+  font: inherit;
+}
+.lab-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0 80px;
+}
+.lab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0 2px 38px;
+  border-bottom: 1px solid #23251e;
+}
+.lab-kicker,
+.panel-heading span,
+.panel-heading code,
+.lab-status,
+.metrics dt,
+.metrics dd,
+.order-row code {
+  font-family: 'DM Mono', monospace;
+}
+.lab-kicker {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.lab-header h1 {
+  margin: 13px 0 0;
+  font-size: clamp(42px, 6vw, 78px);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+  font-weight: 600;
+}
+.lab-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.lab-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #84f05d;
+  box-shadow: 0 0 0 4px #84f05d33;
+}
+.lab-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.lab-panel {
+  min-height: 280px;
+  padding: 18px;
+  border: 1px solid #6f7068;
+  background: #eeece2;
+  box-shadow: 3px 3px 0 #292b24;
+}
+.specimen-panel {
+  grid-column: span 7;
+}
+.telemetry-panel {
+  grid-column: span 5;
+}
+.sheet-panel,
+.order-panel,
+.carousel-panel,
+.refresh-panel {
+  grid-column: span 6;
+}
+.panel-heading {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #aaa99f;
+}
+.panel-heading span,
+.panel-heading code {
+  font-size: 10px;
+}
+.panel-heading h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.press-stage {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, #dad8cc 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+.hero-control {
+  width: 190px;
+  height: 82px;
+  border: 1px solid #1c1e18;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  gap: 3px;
+  color: #eeece2;
+  background: #20221c;
+  box-shadow: 0 12px 24px #191a1533;
+}
+.hero-control span {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.hero-control small {
+  color: #a8aa9e;
+  font-size: 10px;
+}
+.lab-segments {
+  height: 38px;
+  padding: 3px;
+  border: 1px solid #aaa99f;
+  background: #d9d7cd;
+}
+.lab-segments button {
+  border: 0;
+  background: transparent;
+  z-index: 0;
+}
+.lab-segments button span {
+  background: #20221c;
+}
+.lab-segments [aria-checked='true'] {
+  color: #fff;
+}
+.metrics {
+  margin: 18px 0;
+}
+.metrics div {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px dashed #aaa99f;
+}
+.metrics dt,
+.metrics dd {
+  margin: 0;
+  font-size: 11px;
+}
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 22px;
+}
+.open-sheet {
+  width: 100%;
+  min-height: 94px;
+  margin: 28px 0 14px;
+  padding: 0 22px;
+  border: 1px solid #20221c;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #dfff43;
+  text-align: left;
+}
+.open-sheet b {
+  font-size: 28px;
+}
+.swipe-sample {
+  padding: 16px;
+  background: #fff;
+}
+.swipe-sample span,
+.swipe-sample small {
+  display: block;
+}
+.swipe-sample small {
+  margin-top: 3px;
+  color: #73756b;
+}
+.delete-action {
+  height: 100%;
+  min-width: 100px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #d03b2f;
+}
+.order-row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  padding: 15px 4px;
+  border-bottom: 1px solid #aaa99f;
+  background: #eeece2;
+  cursor: grab;
+}
+.order-row code {
+  font-size: 10px;
+}
+.carousel-panel [data-pwacn-carousel] {
+  margin-top: 18px;
+}
+.material {
+  height: 190px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 8px solid #eeece2;
+}
+.material span {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+}
+.material strong {
+  font-size: 32px;
+  letter-spacing: -0.06em;
+}
+.material-0 {
+  background: #b9d9ff;
+}
+.material-1 {
+  background: #ffcbad;
+}
+.material-2 {
+  color: #fff;
+  background: #34372f;
+}
+.refresh-panel [data-pwacn-refresh-control] {
+  height: 190px;
+  margin-top: 18px;
+  border: 1px solid #aaa99f;
+}
+.refresh-content {
+  min-height: 240px;
+  padding: 60px 24px;
+  background: #dad8cd;
+}
+.refresh-content strong,
+.refresh-content span {
+  display: block;
+}
+.refresh-content span {
+  margin-top: 8px;
+  max-width: 320px;
+  color: #63655d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.lab-sheet-content {
+  height: calc(100% - 30px);
+  padding: 12px 24px 40px;
+}
+.lab-sheet-content h2 {
+  max-width: 620px;
+  margin: 12px 0;
+  font-size: 34px;
+  letter-spacing: -0.04em;
+}
+.lab-sheet-content p {
+  max-width: 660px;
+  line-height: 1.6;
+}
+.sheet-test-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid #c0beb5;
+}
+.sheet-test-row b {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #287b32;
+}
+.sheet-done {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 18px;
+  border: 0;
+  background: #20221c;
+  color: #fff;
+}
+@media (max-width: 760px) {
+  .lab-shell {
+    width: 100%;
+    padding: 26px 12px 60px;
+  }
+  .lab-header {
+    display: grid;
+    gap: 22px;
+  }
+  .lab-header h1 {
+    font-size: 44px;
+  }
+  .lab-panel {
+    grid-column: 1/-1;
+  }
+  .panel-heading {
+    grid-template-columns: 28px 1fr auto;
+  }
+  .specimen-panel {
+    min-height: 330px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root {
+    transition: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}

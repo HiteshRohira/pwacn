@@ -1,4 +1,4 @@
-import { gestures, springs } from '@pwacn/core';
+import { gestureCoordinator, gestures, springs } from '@pwacn/core';
 import { animate, motion, useMotionValue } from 'motion/react';
 import {
   useEffect,
@@ -153,6 +153,16 @@ export function SwipeTabs<T extends string>({
             current.intent =
               Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
             if (current.intent === 'vertical') return;
+            if (
+              !gestureCoordinator.claim(event.pointerId, {
+                owner: 'tabs',
+                axis: 'x',
+                priority: 5,
+              })
+            ) {
+              session.current = null;
+              return;
+            }
             event.currentTarget.setPointerCapture(event.pointerId);
           }
           if (current.intent !== 'horizontal') return;
@@ -171,6 +181,7 @@ export function SwipeTabs<T extends string>({
           const current = session.current;
           if (!current || current.pointerId !== event.pointerId) return;
           session.current = null;
+          gestureCoordinator.release(event.pointerId, 'tabs');
           if (current.intent !== 'horizontal') return;
           const travel = x.get() - current.origin;
           const progress = Math.abs(travel) / width;
@@ -183,6 +194,7 @@ export function SwipeTabs<T extends string>({
         }}
         onPointerCancel={() => {
           session.current = null;
+          gestureCoordinator.reset();
           settle(indexRef.current);
         }}
       >
