@@ -12,6 +12,7 @@ import {
   motion,
   useDragControls,
   useMotionValue,
+  useTransform,
 } from 'motion/react';
 import {
   createContext,
@@ -30,6 +31,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useMobileViewport } from './use-mobile-viewport';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
+import { emitFeelTelemetry } from './feel-telemetry';
 
 type SheetContextValue = {
   close: () => void;
@@ -75,6 +77,11 @@ export function BottomSheet({
   const labelId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const dragOrigin = useRef<{ pointerY: number; surfaceY: number } | null>(null);
+  const motionState = useRef<'idle' | 'dragging' | 'settling'>('idle');
+  const lastMotionFrame = useRef<number | null>(null);
+  const motionToken = useRef(0);
+  const activeAnimation = useRef<ReturnType<typeof animate> | null>(null);
   const snapPointsKey = snapPoints.join(',');
   const normalizedSnaps = useMemo(
     () => normalizeSnapPoints(snapPointsKey),
@@ -82,15 +89,37 @@ export function BottomSheet({
   );
   const [snap, setSnap] = useState(initialSnap ?? normalizedSnaps[0] ?? 0.9);
   const height = Math.max(240, viewport.height * (normalizedSnaps[0] ?? 0.9));
+  const backdropOpacity = useTransform(y, [0, height], [1, 0]);
   const snapOffset = useCallback(
     (point: number) => Math.max(0, height - viewport.height * point),
     [height, viewport.height],
   );
   const settle = useCallback(
-    (nextSnap: number) => {
+    (nextSnap: number, releaseVelocity = 0, onComplete?: () => void) => {
       setSnap(nextSnap);
       onSnapChange?.(nextSnap);
-      animate(y, snapOffset(nextSnap), reduced ? { duration: 0.01 } : springs.sheet);
+      motionState.current = 'settling';
+      const token = ++motionToken.current;
+      activeAnimation.current = animate(
+        y,
+        snapOffset(nextSnap),
+        reduced ? { duration: 0.01 } : { ...springs.sheet, velocity: releaseVelocity },
+      );
+      void activeAnimation.current.then(() => {
+        if (token !== motionToken.current) return;
+        motionState.current = 'idle';
+        emitFeelTelemetry({
+          timestamp: performance.now(),
+          primitive: 'BottomSheet',
+          gesture: 'drag-y',
+          state: 'complete',
+          surfaceY: y.get(),
+          surfaceVelocityY: y.getVelocity(),
+          activeSnapPoint: nextSnap,
+          targetSnapPoint: nextSnap,
+        });
+        onComplete?.();
+      });
     },
     [onSnapChange, reduced, snapOffset, y],
   );
@@ -110,6 +139,33 @@ export function BottomSheet({
     });
     return () => cancelAnimationFrame(frame);
   }, [height, initialSnap, normalizedSnaps, open, reduced, snapOffset, y]);
+
+  useEffect(() => {
+    let frame = 0;
+    const sampleAnimationFrame = (timestamp: number) => {
+      if (motionState.current === 'settling') {
+        const previous = lastMotionFrame.current;
+        if (previous != null && timestamp - previous < 8) {
+          frame = requestAnimationFrame(sampleAnimationFrame);
+          return;
+        }
+        lastMotionFrame.current = timestamp;
+        emitFeelTelemetry({
+          timestamp,
+          primitive: 'BottomSheet',
+          gesture: 'drag-y',
+          state: 'settling',
+          surfaceY: y.get(),
+          surfaceVelocityY: y.getVelocity(),
+          activeSnapPoint: snap,
+          frameIntervalMs: previous == null ? undefined : timestamp - previous,
+        });
+      }
+      frame = requestAnimationFrame(sampleAnimationFrame);
+    };
+    frame = requestAnimationFrame(sampleAnimationFrame);
+    return () => cancelAnimationFrame(frame);
+  }, [snap, y]);
 
   useEffect(() => {
     if (!open) return;
@@ -171,6 +227,21 @@ export function BottomSheet({
       })
     )
       return;
+    if (motionState.current === 'settling') {
+      activeAnimation.current?.stop();
+      motionToken.current += 1;
+      emitFeelTelemetry({
+        timestamp: performance.now(),
+        primitive: 'BottomSheet',
+        gesture: 'drag-y',
+        state: 'interrupted',
+        pointerY: event.clientY,
+        surfaceY: y.get(),
+        surfaceVelocityY: y.getVelocity(),
+        activeSnapPoint: snap,
+        gestureOwner: 'sheet',
+      });
+    }
     controls.start(event);
   };
 
@@ -207,6 +278,7 @@ export function BottomSheet({
                 inset: 0,
                 border: 0,
                 background: 'rgb(0 0 0 / .42)',
+                opacity: backdropOpacity,
               }}
             />
             <motion.div
@@ -240,18 +312,77 @@ export function BottomSheet({
               dragListener={false}
               dragConstraints={{ top: 0, bottom: height }}
               dragElastic={{ top: 0.04, bottom: gestures.sheet.dragElastic }}
+              onDragStart={(_, info) => {
+                motionState.current = 'dragging';
+                lastMotionFrame.current = performance.now();
+                dragOrigin.current = { pointerY: info.point.y, surfaceY: y.get() };
+              }}
+              onDrag={(_, info) => {
+                const timestamp = performance.now();
+                lastMotionFrame.current = timestamp;
+                const origin = dragOrigin.current;
+                const trackingErrorPx = origin
+                  ? info.point.y - origin.pointerY - (y.get() - origin.surfaceY)
+                  : undefined;
+                emitFeelTelemetry({
+                  timestamp,
+                  primitive: 'BottomSheet',
+                  gesture: 'drag-y',
+                  state: 'dragging',
+                  pointerY: info.point.y,
+                  surfaceY: y.get(),
+                  pointerVelocityY: info.velocity.y,
+                  surfaceVelocityY: y.getVelocity(),
+                  trackingErrorPx,
+                  activeSnapPoint: snap,
+                  gestureOwner: 'sheet',
+                });
+              }}
               onDragEnd={(_, info) => {
                 gestureCoordinator.reset();
+                motionState.current = 'settling';
+                lastMotionFrame.current = null;
                 const current = y.get();
                 const projected = current + info.velocity.y * 0.16;
                 const lowest = snapOffset(normalizedSnaps.at(-1) ?? snap);
+                emitFeelTelemetry({
+                  timestamp: performance.now(),
+                  primitive: 'BottomSheet',
+                  gesture: 'drag-y',
+                  state: 'releasing',
+                  pointerY: info.point.y,
+                  surfaceY: current,
+                  pointerVelocityY: info.velocity.y,
+                  surfaceVelocityY: y.getVelocity(),
+                  activeSnapPoint: snap,
+                  gestureOwner: 'sheet',
+                });
                 if (
                   dismissible &&
                   (projected > Math.max(lowest + 110, height * 0.82) ||
                     info.velocity.y > gestures.sheet.dismissVelocity)
                 ) {
                   haptics.impact('light');
-                  close();
+                  const token = ++motionToken.current;
+                  activeAnimation.current = animate(
+                    y,
+                    height,
+                    reduced
+                      ? { duration: 0.01 }
+                      : { ...springs.dismiss, velocity: info.velocity.y },
+                  );
+                  void activeAnimation.current.then(() => {
+                    if (token !== motionToken.current) return;
+                    emitFeelTelemetry({
+                      timestamp: performance.now(),
+                      primitive: 'BottomSheet',
+                      gesture: 'drag-y',
+                      state: 'complete',
+                      surfaceY: y.get(),
+                      surfaceVelocityY: y.getVelocity(),
+                    });
+                    close();
+                  });
                   return;
                 }
                 const next = normalizedSnaps.reduce((nearest, point) =>
@@ -261,7 +392,7 @@ export function BottomSheet({
                     : nearest,
                 );
                 if (next !== snap) haptics.selection();
-                settle(next);
+                settle(next, info.velocity.y);
               }}
             >
               <div

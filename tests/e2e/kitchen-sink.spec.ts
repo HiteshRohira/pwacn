@@ -50,3 +50,15 @@ test('detail content and appearance controls are functional', async ({ page }) =
   await page.getByRole('button', { name: 'Dark' }).tap();
   await expect(page.locator('html')).toHaveAttribute('data-pwacn-theme', 'dark');
 });
+
+test('developer screen exposes the physical BottomSheet demo', async ({ page }) => {
+  await page.goto(url);
+  await page.getByRole('button', { name: /Developer/ }).tap();
+  await expect(page.getByRole('heading', { name: 'Bottom Sheet' })).toBeVisible();
+  await page.getByRole('button', { name: /Open feel test/ }).tap();
+  await expect(
+    page.getByRole('dialog', { name: 'Bottom Sheet feel test' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Close sheet' }).tap();
+  await expect(page.getByRole('dialog', { name: 'Bottom Sheet feel test' })).toBeHidden();
+});

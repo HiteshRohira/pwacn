@@ -190,6 +190,16 @@ select {
 .open-sheet b {
   font-size: 28px;
 }
+.feel-lab-link {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 2px 14px;
+  color: #20221c;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-decoration: none;
+  border-bottom: 1px solid #8e8e84;
+}
 .swipe-sample {
   padding: 16px;
   background: #fff;
@@ -303,6 +313,324 @@ select {
   border: 0;
   background: #20221c;
   color: #fff;
+}
+
+/* Isolated BottomSheet feel fixture — a utilitarian motion oscilloscope. */
+.feel-shell {
+  min-height: 100dvh;
+  padding: 24px clamp(14px, 4vw, 52px) 18px;
+  color: #e9ff65;
+  background:
+    linear-gradient(rgb(233 255 101 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(233 255 101 / 0.05) 1px, transparent 1px), #151712;
+  background-size: 24px 24px;
+}
+.feel-header {
+  min-height: 300px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(220px, 360px);
+  align-items: end;
+  gap: 32px;
+  padding: 64px 0 26px;
+  border-bottom: 1px solid rgb(233 255 101 / 0.5);
+}
+.feel-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: inherit;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-decoration: none;
+}
+.feel-header h1 {
+  max-width: 740px;
+  margin: 12px 0 0;
+  font-size: clamp(52px, 8vw, 112px);
+  line-height: 0.82;
+  letter-spacing: -0.075em;
+  font-weight: 600;
+}
+.feel-header p {
+  margin: 0;
+  color: #bbc28f;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.feel-workbench {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+  border-bottom: 1px solid rgb(233 255 101 / 0.5);
+}
+.scenario-list {
+  border-right: 1px solid rgb(233 255 101 / 0.5);
+}
+.scenario-list button {
+  width: 100%;
+  min-height: 90px;
+  padding: 14px 18px;
+  border: 0;
+  border-bottom: 1px solid rgb(233 255 101 / 0.18);
+  display: grid;
+  grid-template-columns: 36px 150px 1fr;
+  align-items: center;
+  gap: 8px;
+  color: #969c72;
+  background: transparent;
+  text-align: left;
+}
+.scenario-list button.active {
+  color: #151712;
+  background: #e9ff65;
+}
+.scenario-list span,
+.scenario-list small,
+.feel-footer {
+  font-family: 'DM Mono', monospace;
+}
+.scenario-list strong {
+  font-size: 15px;
+}
+.scenario-list small {
+  font-size: 10px;
+  line-height: 1.45;
+}
+.scenario-stage {
+  min-height: 500px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 48px;
+}
+.stage-ruler {
+  position: absolute;
+  inset: 12px 12px 12px auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #737858;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+}
+.stage-card {
+  width: min(440px, 100%);
+  padding: 30px;
+  color: #1b1d17;
+  background: #f0eee4;
+  box-shadow: 12px 12px 0 #e9ff65;
+}
+.stage-card h2 {
+  margin: 14px 0 8px;
+  font-size: 34px;
+  letter-spacing: -0.05em;
+}
+.stage-card p {
+  color: #606258;
+  line-height: 1.55;
+}
+.stage-card ul {
+  padding: 0;
+  list-style: none;
+}
+.stage-card li {
+  padding: 8px 0;
+  border-bottom: 1px solid #c5c4b9;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.stage-card li::before {
+  content: '✓';
+  margin-right: 9px;
+  color: #456500;
+}
+.run-sheet {
+  width: 100%;
+  min-height: 64px;
+  margin-top: 22px;
+  padding: 0 18px;
+  border: 1px solid #1b1d17;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #e9ff65;
+  background: #1b1d17;
+}
+.run-sheet b {
+  font-size: 25px;
+}
+.replay-trace {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid #8f9187;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #1b1d17;
+  background: transparent;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.replay-trace:disabled {
+  color: #74766e;
+}
+.feel-sheet {
+  background: #eeece2 !important;
+  color: #171913 !important;
+}
+.feel-sheet-scroll {
+  height: calc(100% - 30px);
+  padding: 8px 18px 40px;
+}
+.feel-inspector {
+  padding: 14px;
+  border: 1px solid #282a23;
+  background: #171913;
+  color: #e9ff65;
+}
+.inspector-title {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+}
+.inspector-title b {
+  color: #fff;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+.feel-trace {
+  width: 100%;
+  height: 96px;
+  margin-top: 10px;
+  overflow: visible;
+}
+.feel-trace polyline,
+.feel-trace path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.trace-grid {
+  stroke: #3e4232;
+  stroke-dasharray: 2 4;
+}
+.trace-pointer {
+  stroke: #ff7c5c;
+  stroke-width: 2;
+}
+.trace-surface {
+  stroke: #e9ff65;
+  stroke-width: 2;
+}
+.trace-key {
+  display: flex;
+  gap: 18px;
+  color: #8f9571;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+}
+.trace-key span::before {
+  content: '';
+  width: 12px;
+  height: 2px;
+  margin-right: 5px;
+  display: inline-block;
+  background: #ff7c5c;
+  vertical-align: middle;
+}
+.trace-key span + span::before {
+  background: #e9ff65;
+}
+.feel-inspector dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+  margin: 12px 0 0;
+}
+.feel-inspector dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid #34372b;
+}
+.feel-inspector dt,
+.feel-inspector dd {
+  margin: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+}
+.feel-inspector dd {
+  color: #fff;
+}
+.fixture-content {
+  padding: 28px 8px;
+}
+.fixture-content h2 {
+  margin: 10px 0;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+}
+.fixture-content p {
+  line-height: 1.55;
+  color: #67695f;
+}
+.fixture-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid #c1c0b6;
+}
+.fixture-row small {
+  color: #77796e;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.feel-footer {
+  padding: 14px 0;
+  color: #818660;
+  font-size: 9px;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .feel-shell {
+    padding: 18px 12px 12px;
+  }
+  .feel-header {
+    min-height: 270px;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding-top: 52px;
+  }
+  .feel-header h1 {
+    font-size: 60px;
+  }
+  .feel-workbench {
+    grid-template-columns: 1fr;
+  }
+  .scenario-list {
+    border-right: 0;
+  }
+  .scenario-list button {
+    grid-template-columns: 32px 110px 1fr;
+    padding-inline: 10px;
+  }
+  .scenario-stage {
+    min-height: 390px;
+    padding: 34px 22px 42px 8px;
+  }
+  .stage-card {
+    padding: 22px;
+    box-shadow: 8px 8px 0 #e9ff65;
+  }
+  .feel-inspector dl {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 760px) {
   .lab-shell {

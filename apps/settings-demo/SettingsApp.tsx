@@ -1,11 +1,15 @@
 import { haptics } from '@pwacn/core';
 import {
   ActionSheet,
+  BottomSheet,
   MobileStack,
   MobileSwitch,
   Pressable,
   SegmentedControl,
+  SheetClose,
+  SheetScrollArea,
   ToastProvider,
+  useFeelTelemetry,
   useToast,
   useMobileStack,
 } from '@pwacn/react';
@@ -1327,6 +1331,94 @@ function BatteryScreen() {
   );
 }
 
+function DeveloperFeelScreen() {
+  const [sheet, setSheet] = useState(false);
+  const telemetry = useFeelTelemetry('BottomSheet');
+  const summary = telemetry.summary;
+  return (
+    <>
+      <DetailScreen title="Developer">
+        <section className="feel-demo-card">
+          <span>PWACN FEEL LAB</span>
+          <h2>Bottom Sheet</h2>
+          <p>
+            Drag slowly, flick down, overdrag the upper snap, or grab the sheet while it
+            is still settling.
+          </p>
+          <Pressable
+            className="feel-demo-button"
+            onPress={() => {
+              telemetry.clear();
+              setSheet(true);
+            }}
+          >
+            Open feel test <b>↑</b>
+          </Pressable>
+        </section>
+        <Group
+          title="LAST RUN"
+          footer="These values describe the browser motion model. Judge final feel with your thumb on this device."
+        >
+          <SettingsRow label="State" value={telemetry.current?.state ?? 'Ready'} />
+          <SettingsRow
+            label="Tracking error"
+            value={
+              summary.meanTrackingErrorPx == null
+                ? '—'
+                : `${summary.meanTrackingErrorPx.toFixed(1)} px`
+            }
+          />
+          <SettingsRow
+            label="Velocity continuity"
+            value={
+              summary.velocityContinuity == null
+                ? '—'
+                : summary.velocityContinuity.toFixed(2)
+            }
+          />
+          <SettingsRow
+            label="Settle time"
+            value={
+              summary.settleTimeMs == null ? '—' : `${summary.settleTimeMs.toFixed(0)} ms`
+            }
+          />
+        </Group>
+      </DetailScreen>
+      <BottomSheet
+        open={sheet}
+        onOpenChange={setSheet}
+        title="Bottom Sheet feel test"
+        snapPoints={[0.35, 0.62, 0.92]}
+        initialSnap={0.62}
+        className="settings-feel-sheet"
+      >
+        <SheetScrollArea className="settings-feel-scroll">
+          <div className="settings-feel-readout" aria-live="polite">
+            <span>LIVE / {telemetry.current?.state ?? 'READY'}</span>
+            <strong>
+              {Math.round(Math.abs(telemetry.current?.surfaceVelocityY ?? 0))}
+              <small> px/s</small>
+            </strong>
+            <p>Surface velocity</p>
+          </div>
+          <h2>Move this surface.</h2>
+          <p>
+            The backdrop, surface, and release spring are driven by the same continuous
+            motion value. A second touch should take control immediately.
+          </p>
+          {Array.from({ length: 9 }, (_, index) => (
+            <div className="settings-feel-row" key={index}>
+              <span>Scroll sample {index + 1}</span>
+              <small>{index % 2 ? 'boundary' : 'content'}</small>
+            </div>
+          ))}
+          <SheetClose className="settings-feel-close">Close feel test</SheetClose>
+        </SheetScrollArea>
+      </BottomSheet>
+    </>
+  );
+}
+
 function AppleAccountScreen() {
   const [sheet, setSheet] = useState(false);
   return (
@@ -1397,6 +1489,7 @@ function SettingsHome() {
       General: <GeneralScreen />,
       'Display & Brightness': <DisplayScreen />,
       Battery: <BatteryScreen />,
+      Developer: <DeveloperFeelScreen />,
       'Apple Account': <AppleAccountScreen />,
     }),
     [],

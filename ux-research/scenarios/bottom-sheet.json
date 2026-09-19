@@ -1,0 +1,98 @@
+{
+  "primitive": "BottomSheet",
+  "viewport": { "width": 393, "height": 852 },
+  "scenarios": [
+    {
+      "id": "slow-snap",
+      "label": "Slow snap",
+      "intent": "Track the finger directly, then preserve the low release velocity into the nearest snap.",
+      "invariants": ["direct tracking", "nearest snap wins", "continuous release"],
+      "target": "handle",
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 160, "dx": 0, "dy": -38 },
+          { "t": 320, "dx": 0, "dy": -82 },
+          { "t": 480, "dx": 0, "dy": -126 },
+          { "t": 640, "dx": 0, "dy": -168 }
+        ]
+      ]
+    },
+    {
+      "id": "fast-dismiss",
+      "label": "Fast dismiss",
+      "intent": "Carry a decisive downward flick into dismissal without restarting motion from rest.",
+      "invariants": ["velocity commits", "direction preserved", "no release pause"],
+      "target": "handle",
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 32, "dx": 0, "dy": 36 },
+          { "t": 64, "dx": 0, "dy": 104 },
+          { "t": 96, "dx": 0, "dy": 198 },
+          { "t": 112, "dx": 0, "dy": 268 }
+        ]
+      ]
+    },
+    {
+      "id": "overdrag-top",
+      "label": "Upper resistance",
+      "intent": "Continue moving beyond the highest snap with progressively reduced displacement.",
+      "invariants": ["no hard clamp", "progressive resistance", "spring return"],
+      "target": "handle",
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 120, "dx": 0, "dy": -90 },
+          { "t": 240, "dx": 0, "dy": -190 },
+          { "t": 360, "dx": 0, "dy": -300 },
+          { "t": 480, "dx": 0, "dy": -410 }
+        ]
+      ]
+    },
+    {
+      "id": "interrupt-settle",
+      "label": "Interrupt settle",
+      "intent": "Seize the surface with a second gesture while its first release is still settling.",
+      "invariants": [
+        "animation stops immediately",
+        "new drag owns motion",
+        "no position jump"
+      ],
+      "target": "handle",
+      "pauseBetweenTracesMs": 70,
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 55, "dx": 0, "dy": -70 },
+          { "t": 110, "dx": 0, "dy": -145 }
+        ],
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 90, "dx": 0, "dy": 48 },
+          { "t": 180, "dx": 0, "dy": 92 }
+        ]
+      ]
+    },
+    {
+      "id": "scroll-handoff",
+      "label": "Scroll handoff",
+      "intent": "Transfer a downward gesture at scrollTop zero from native content scrolling to the sheet.",
+      "invariants": [
+        "scroll owns while movable",
+        "sheet owns at top",
+        "single continuous gesture"
+      ],
+      "target": "scroll-area",
+      "prepareScrollTop": 140,
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 90, "dx": 0, "dy": 42 },
+          { "t": 180, "dx": 0, "dy": 92 },
+          { "t": 270, "dx": 0, "dy": 152 }
+        ]
+      ]
+    }
+  ]
+}

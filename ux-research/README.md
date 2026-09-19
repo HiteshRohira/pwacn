@@ -31,11 +31,19 @@ To test production:
 PWACN_UX_URL=https://pwacn-playground.vercel.app pnpm ux:capture
 ```
 
-Each run produces separate fixed-viewport videos and screenshots for tab paging, sheet
-dismissal, full-screen presentation, persistent bottom navigation, and reduced motion. An
-`audit.json` file records whether every observable state transition completed. The artifacts
-are evidence for frame-by-frame review; the assertions prevent a visually plausible capture
-from hiding a broken destination state.
+The general UX run currently captures Settings navigation, search, account-sheet, and dark
+appearance flows. An `audit.json` records whether every observable state transition completed.
+
+For the isolated BottomSheet fixture, run the playground preview on port 4173 and use:
+
+```bash
+pnpm feel:capture
+```
+
+This replays the five traces in `scenarios/bottom-sheet.json` and writes a video, screenshot,
+telemetry JSON, and structured review for each scenario. The telemetry describes the
+JavaScript motion model; real-device review remains the authority for physical latency and
+perceived feel.
 
 ## Review cadence
 

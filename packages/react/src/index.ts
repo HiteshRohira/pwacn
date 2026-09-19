@@ -1,4 +1,5 @@
 export * from './draggable';
+export * from './feel-telemetry';
 export * from './motion-surface';
 export * from './mobile-controls';
 export * from './mobile-primitives';

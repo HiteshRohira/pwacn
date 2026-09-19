@@ -454,6 +454,117 @@ button {
 .ios-version span {
   font-size: 11px;
 }
+.feel-demo-card {
+  margin: 4px 0 20px;
+  padding: 22px;
+  overflow: hidden;
+  border-radius: 18px;
+  color: #efff7a;
+  background:
+    linear-gradient(rgb(239 255 122 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(239 255 122 / 0.07) 1px, transparent 1px), #171913;
+  background-size: 18px 18px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.14);
+}
+.feel-demo-card > span,
+.settings-feel-readout > span,
+.settings-feel-row small {
+  font-family: ui-monospace, 'SFMono-Regular', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.feel-demo-card h2 {
+  margin: 10px 0 5px;
+  color: #fff;
+  font-size: 31px;
+  letter-spacing: -1px;
+}
+.feel-demo-card p {
+  margin: 0;
+  color: #b8bd98;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.feel-demo-button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 20px;
+  padding: 0 15px;
+  border: 1px solid #efff7a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #171913;
+  background: #efff7a;
+  font-weight: 600;
+}
+.feel-demo-button b {
+  font-size: 22px;
+}
+.settings-feel-sheet {
+  background: #f2f2f7 !important;
+}
+.settings-feel-scroll {
+  height: calc(100% - 30px);
+  padding: 8px 18px 42px;
+}
+.settings-feel-readout {
+  min-height: 145px;
+  padding: 17px;
+  border-radius: 15px;
+  display: grid;
+  align-content: space-between;
+  color: #efff7a;
+  background: #171913;
+}
+.settings-feel-readout strong {
+  margin-top: 14px;
+  color: #fff;
+  font-size: 44px;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+.settings-feel-readout strong small {
+  color: #92977a;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.settings-feel-readout p {
+  margin: 5px 0 0;
+  color: #92977a;
+  font-size: 12px;
+}
+.settings-feel-scroll > h2 {
+  margin: 25px 2px 8px;
+  font-size: 28px;
+  letter-spacing: -0.7px;
+}
+.settings-feel-scroll > p {
+  margin: 0 2px 20px;
+  color: #6d6d72;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.settings-feel-row {
+  min-height: 47px;
+  padding: 0 2px;
+  border-bottom: 0.5px solid var(--ios-separator);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-feel-row small {
+  color: #8e8e93;
+}
+.settings-feel-close {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: #171913;
+}
 .center-note,
 .discoverable {
   padding: 10px 28px;

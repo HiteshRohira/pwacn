@@ -14,6 +14,7 @@ import {
   useToast,
 } from '@pwacn/react';
 import { useState } from 'react';
+import { SheetFeelLab } from './SheetFeelLab';
 
 type Mass = 'micro' | 'control' | 'surface';
 
@@ -114,6 +115,9 @@ function Lab() {
           <Pressable className="open-sheet" onPress={() => setSheet(true)}>
             Open multi-snap sheet <b>↑</b>
           </Pressable>
+          <a className="feel-lab-link" href="/feel/sheet">
+            Open isolated feel fixture <span>↗</span>
+          </a>
           <Swipeable
             action={<span className="delete-action">Delete</span>}
             onCommit={() => toast({ message: 'Swipe committed', tone: 'warning' })}
@@ -203,6 +207,7 @@ function Lab() {
 }
 
 export function App() {
+  if (window.location.pathname === '/feel/sheet') return <SheetFeelLab />;
   return (
     <ToastProvider>
       <Lab />
