@@ -2,6 +2,7 @@ import { gestures, movementDistance, springForMass, type MassClass } from '@pwac
 import { motion } from 'motion/react';
 import {
   forwardRef,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,6 +13,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react';
+import { emitFeelTelemetry } from './feel-telemetry';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
 
 export type PressFeedback = 'scale' | 'opacity' | 'none';
@@ -64,16 +66,42 @@ export const Pressable = forwardRef<HTMLElement, PressableProps>(function Pressa
   const MotionComponent = useMemo(() => motion.create(Component), [Component]);
   const reducedMotion = usePrefersReducedMotion();
   const [pressed, setPressed] = useState(false);
+  const pressedRef = useRef(false);
   const pointerId = useRef<number | null>(null);
   const start = useRef<Point | null>(null);
   const cancelled = useRef(false);
+  const contactTime = useRef<number | null>(null);
+
+  const updatePressed = (next: boolean) => {
+    pressedRef.current = next;
+    setPressed(next);
+  };
+
+  useLayoutEffect(() => {
+    if (!pressed || contactTime.current == null) return;
+    emitFeelTelemetry({
+      timestamp: performance.now(),
+      primitive: 'Pressable',
+      gesture: 'press',
+      state: 'responding',
+      surfaceScale: feedback === 'scale' && !reducedMotion ? 0.965 : 1,
+    });
+  }, [feedback, pressed, reducedMotion]);
 
   const finish = (wasCancelled: boolean) => {
-    if (!pressed && pointerId.current === null) return;
-    setPressed(false);
+    if (!pressedRef.current && pointerId.current === null) return;
+    updatePressed(false);
     pointerId.current = null;
     start.current = null;
     cancelled.current = wasCancelled;
+    emitFeelTelemetry({
+      timestamp: performance.now(),
+      primitive: 'Pressable',
+      gesture: 'press',
+      state: wasCancelled ? 'cancelled' : 'releasing',
+      surfaceScale: 1,
+      cancelled: wasCancelled,
+    });
     onPressEnd?.(wasCancelled);
   };
 
@@ -82,8 +110,22 @@ export const Pressable = forwardRef<HTMLElement, PressableProps>(function Pressa
     pointerId.current = event.pointerId;
     start.current = { x: event.clientX, y: event.clientY };
     cancelled.current = false;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setPressed(true);
+    contactTime.current = performance.now();
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic deterministic traces do not create a browser pointer capture record.
+    }
+    updatePressed(true);
+    emitFeelTelemetry({
+      timestamp: contactTime.current,
+      primitive: 'Pressable',
+      gesture: 'press',
+      state: 'contact',
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      surfaceScale: 1,
+    });
     onFeedback?.();
     onPressStart?.();
   };
@@ -99,7 +141,20 @@ export const Pressable = forwardRef<HTMLElement, PressableProps>(function Pressa
     const dragged =
       movementDistance(start.current, { x: event.clientX, y: event.clientY }) >
       movementTolerance;
-    if (outside || dragged) finish(true);
+    const invalid = outside || dragged;
+    if (invalid === cancelled.current) return;
+    cancelled.current = invalid;
+    updatePressed(!invalid);
+    emitFeelTelemetry({
+      timestamp: performance.now(),
+      primitive: 'Pressable',
+      gesture: 'press',
+      state: invalid ? 'cancelled' : 'responding',
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      surfaceScale: invalid || reducedMotion || feedback !== 'scale' ? 1 : 0.965,
+      cancelled: invalid,
+    });
   };
 
   const handleClick = (event: MouseEvent<HTMLElement>) => {
@@ -113,7 +168,15 @@ export const Pressable = forwardRef<HTMLElement, PressableProps>(function Pressa
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (disabled || event.repeat || !['Enter', ' '].includes(event.key)) return;
-    setPressed(true);
+    contactTime.current = performance.now();
+    updatePressed(true);
+    emitFeelTelemetry({
+      timestamp: contactTime.current,
+      primitive: 'Pressable',
+      gesture: 'keyboard-press',
+      state: 'contact',
+      surfaceScale: 1,
+    });
     onFeedback?.();
     onPressStart?.();
     if (Component !== 'button') event.preventDefault();
@@ -121,7 +184,14 @@ export const Pressable = forwardRef<HTMLElement, PressableProps>(function Pressa
 
   const handleKeyUp = (event: KeyboardEvent<HTMLElement>) => {
     if (disabled || !['Enter', ' '].includes(event.key)) return;
-    setPressed(false);
+    updatePressed(false);
+    emitFeelTelemetry({
+      timestamp: performance.now(),
+      primitive: 'Pressable',
+      gesture: 'keyboard-press',
+      state: 'releasing',
+      surfaceScale: 1,
+    });
     onPressEnd?.(false);
     if (Component !== 'button') {
       event.preventDefault();
@@ -156,6 +226,16 @@ export const Pressable = forwardRef<HTMLElement, PressableProps>(function Pressa
       }}
       animate={animate}
       transition={reducedMotion ? { duration: 0.01 } : springForMass('press', mass)}
+      onAnimationComplete={() => {
+        if (pressedRef.current) return;
+        emitFeelTelemetry({
+          timestamp: performance.now(),
+          primitive: 'Pressable',
+          gesture: 'press',
+          state: 'complete',
+          surfaceScale: 1,
+        });
+      }}
       data-pressed={pressed || undefined}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

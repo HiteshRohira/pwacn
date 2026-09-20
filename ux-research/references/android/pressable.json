@@ -1,0 +1,21 @@
+{
+  "platform": "Android",
+  "primitive": "Pressable",
+  "status": "recording-required",
+  "requiredScenarios": [
+    "quick-tap",
+    "slow-press",
+    "drag-away",
+    "drag-back",
+    "rapid-repeat"
+  ],
+  "metadataRequired": [
+    "device",
+    "osVersion",
+    "app",
+    "screen",
+    "refreshRate",
+    "captureFps",
+    "removeAnimations"
+  ]
+}

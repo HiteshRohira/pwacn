@@ -34,16 +34,42 @@ PWACN_UX_URL=https://pwacn-playground.vercel.app pnpm ux:capture
 The general UX run currently captures Settings navigation, search, account-sheet, and dark
 appearance flows. An `audit.json` records whether every observable state transition completed.
 
-For the isolated BottomSheet fixture, run the playground preview on port 4173 and use:
+For the isolated interaction fixtures, run the playground preview on port 4173 and use:
 
 ```bash
 pnpm feel:capture
 ```
 
-This replays the five traces in `scenarios/bottom-sheet.json` and writes a video, screenshot,
-telemetry JSON, and structured review for each scenario. The telemetry describes the
-JavaScript motion model; real-device review remains the authority for physical latency and
-perceived feel.
+This replays the canonical traces for BottomSheet, Pressable, and InteractiveBack and writes
+a video, screenshot, telemetry JSON, and structured review for each scenario. The routes can
+also be inspected directly:
+
+- `/feel/sheet`
+- `/feel/press`
+- `/feel/interactive-back`
+
+Compare any two captured runs with:
+
+```bash
+pnpm feel:compare .ux-artifacts/feel/<baseline> .ux-artifacts/feel/<candidate>
+```
+
+The generated table is deliberately descriptive rather than a pass/fail score. Telemetry
+describes the JavaScript motion model; paired video and real-device review remain the
+authority for physical latency and perceived feel.
+
+## Evidence classes
+
+- **Invariant:** deterministic behavior that can fail automation, such as route commitment,
+  cancellation, interruption, or sufficient trace samples.
+- **Metric:** a measurement that can regress or improve but needs context, such as tracking
+  error, velocity continuity, settle time, and long frames.
+- **Judgment:** a human comparison against the native reference at normal speed and
+  frame-by-frame. Words such as direct, heavy, mushy, abrupt, or coherent belong here.
+
+`eventToCommitMs` measures pointer contact to the React layout response observed by the
+instrumentation. It is not physical touch-to-photon latency. `longFrames` is derived from
+main-thread animation-frame intervals and is not a compositor trace.
 
 ## Review cadence
 

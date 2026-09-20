@@ -1,0 +1,94 @@
+{
+  "primitive": "InteractiveBack",
+  "viewport": { "width": 393, "height": 852 },
+  "scenarios": [
+    {
+      "id": "slow-cancel",
+      "label": "30% drag → cancel",
+      "intent": "Reveal the previous screen continuously, then return from the current position.",
+      "invariants": [
+        "screen follows pointer",
+        "previous screen stays mounted",
+        "route remains detail"
+      ],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 160, "dx": 42, "dy": 0 },
+          { "t": 320, "dx": 82, "dy": 0 },
+          { "t": 480, "dx": 112, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "slow-commit",
+      "label": "70% drag → commit",
+      "intent": "Commit navigation after the distance threshold without waiting to show movement.",
+      "invariants": ["continuous reveal", "distance commits", "route updates once"],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 140, "dx": 82, "dy": 0 },
+          { "t": 280, "dx": 172, "dy": 0 },
+          { "t": 420, "dx": 278, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "fast-flick",
+      "label": "20% flick → commit",
+      "intent": "Allow release velocity to override a short displacement.",
+      "invariants": ["velocity commits", "direction is preserved", "no release pause"],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 20, "dx": 24, "dy": 0 },
+          { "t": 40, "dx": 52, "dy": 0 },
+          { "t": 58, "dx": 88, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "reverse-cancel",
+      "label": "Reverse → cancel",
+      "intent": "Reverse direction during the same gesture and settle back without jumping.",
+      "invariants": [
+        "movement is reversible",
+        "route remains detail",
+        "cancel begins at release position"
+      ],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 130, "dx": 120, "dy": 0 },
+          { "t": 260, "dx": 185, "dy": 0 },
+          { "t": 390, "dx": 75, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "interrupt-cancel",
+      "label": "Interrupt cancel",
+      "intent": "Take control again while the cancelled gesture is still returning.",
+      "invariants": [
+        "second contact interrupts",
+        "new drag owns movement",
+        "route remains coherent"
+      ],
+      "pauseBetweenTracesMs": 80,
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 45, "dx": 45, "dy": 0 },
+          { "t": 90, "dx": 92, "dy": 0 }
+        ],
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 50, "dx": 32, "dy": 0 },
+          { "t": 100, "dx": 66, "dy": 0 },
+          { "t": 190, "dx": 32, "dy": 0 }
+        ]
+      ]
+    }
+  ]
+}

@@ -1333,18 +1333,26 @@ function BatteryScreen() {
 
 function DeveloperFeelScreen() {
   const [sheet, setSheet] = useState(false);
-  const telemetry = useFeelTelemetry('BottomSheet');
+  const telemetry = useFeelTelemetry();
   const summary = telemetry.summary;
   return (
     <>
       <DetailScreen title="Developer">
         <section className="feel-demo-card">
           <span>PWACN FEEL LAB</span>
-          <h2>Bottom Sheet</h2>
+          <h2>Interaction Feel Lab</h2>
           <p>
-            Drag slowly, flick down, overdrag the upper snap, or grab the sheet while it
-            is still settling.
+            Test contact response, drag continuity, interruption, and route commitment
+            with the same primitives used by the app.
           </p>
+          <Pressable
+            className="feel-demo-press-target"
+            onPress={() => undefined}
+            aria-label="Press feel target"
+          >
+            <span>PRESS + DRAG</span>
+            <b>Hold, leave, return</b>
+          </Pressable>
           <Pressable
             className="feel-demo-button"
             onPress={() => {
@@ -1352,9 +1360,17 @@ function DeveloperFeelScreen() {
               setSheet(true);
             }}
           >
-            Open feel test <b>↑</b>
+            Open sheet test <b>↑</b>
           </Pressable>
         </section>
+        <Group
+          title="CANONICAL TESTS"
+          footer="For interactive back, open any detail screen and drag from the left edge. Release past halfway to commit; reverse direction to cancel."
+        >
+          <SettingsRow label="Press" value="Hold · leave · return" />
+          <SettingsRow label="Sheet" value="Drag · flick · interrupt" />
+          <SettingsRow label="Back" value="Edge drag · reverse" />
+        </Group>
         <Group
           title="LAST RUN"
           footer="These values describe the browser motion model. Judge final feel with your thumb on this device."

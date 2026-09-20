@@ -1,0 +1,21 @@
+{
+  "platform": "Android",
+  "primitive": "InteractiveBack",
+  "status": "recording-required",
+  "requiredScenarios": [
+    "slow-cancel",
+    "slow-commit",
+    "fast-flick",
+    "reverse-cancel",
+    "interrupt-cancel"
+  ],
+  "metadataRequired": [
+    "device",
+    "osVersion",
+    "app",
+    "screen",
+    "refreshRate",
+    "captureFps",
+    "removeAnimations"
+  ]
+}

@@ -6,89 +6,29 @@ import {
   SheetScrollArea,
   useFeelTelemetry,
 } from '@pwacn/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import scenarioManifest from '../../../ux-research/scenarios/bottom-sheet.json';
+import { FeelInspector } from './FeelInspector';
+import { replayPointerTraces, wait } from './gesture-replay';
 
 type Scenario = (typeof scenarioManifest.scenarios)[number];
-
-const format = (value: number | null, suffix = '') =>
-  value == null || !Number.isFinite(value) ? '—' : `${value.toFixed(1)}${suffix}`;
-
-const wait = (duration: number) =>
-  new Promise<void>((resolve) => window.setTimeout(resolve, duration));
 
 async function replayScenario(scenario: Scenario) {
   const selector =
     scenario.target === 'scroll-area' ? '.feel-sheet-scroll' : '.pwacn-sheet-handle-zone';
-  for (const [traceIndex, trace] of scenario.traces.entries()) {
-    if (traceIndex > 0) await wait(scenario.pauseBetweenTracesMs ?? 50);
-    const target = document.querySelector<HTMLElement>(selector);
-    if (!target) throw new Error(`Missing gesture target: ${selector}`);
-    if (scenario.prepareScrollTop) {
-      target.scrollTop = scenario.prepareScrollTop;
-      target.scrollTop = 0;
+  const target = () => {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (element && scenario.prepareScrollTop) {
+      element.scrollTop = scenario.prepareScrollTop;
+      element.scrollTop = 0;
     }
-    const box = target.getBoundingClientRect();
-    const origin = {
-      x: box.left + box.width / 2,
-      y: box.top + Math.min(24, box.height / 2),
-    };
-    const pointerId = 700 + traceIndex;
-    const dispatch = (type: string, point: (typeof trace)[number], buttons: number) =>
-      target.dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          pointerId,
-          pointerType: 'touch',
-          isPrimary: true,
-          button: 0,
-          buttons,
-          clientX: origin.x + point.dx,
-          clientY: origin.y + point.dy,
-        }),
-      );
-    dispatch('pointerdown', trace[0]!, 1);
-    let previousTime = 0;
-    for (const point of trace.slice(1)) {
-      await wait(Math.max(0, point.t - previousTime));
-      dispatch('pointermove', point, 1);
-      previousTime = point.t;
-    }
-    dispatch('pointerup', trace.at(-1)!, 0);
-  }
-}
-
-function MotionTrace({
-  samples,
-}: {
-  samples: ReturnType<typeof useFeelTelemetry>['samples'];
-}) {
-  const points = samples.slice(-120);
-  const surface = points.map((sample, index) => {
-    const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * 300;
-    const y = Math.min(92, Math.max(8, 8 + sample.surfaceY * 0.16));
-    return `${x},${y}`;
+    return element;
+  };
+  await replayPointerTraces({
+    target,
+    traces: scenario.traces,
+    pauseBetweenTracesMs: scenario.pauseBetweenTracesMs,
   });
-  const pointer = points
-    .map((sample, index) => {
-      if (sample.pointerY == null) return null;
-      const x = points.length <= 1 ? 0 : (index / (points.length - 1)) * 300;
-      const firstPointer = points.find((item) => item.pointerY != null)?.pointerY ?? 0;
-      return `${x},${Math.min(92, Math.max(8, 48 + (sample.pointerY - firstPointer) * 0.16))}`;
-    })
-    .filter(Boolean);
-  return (
-    <svg className="feel-trace" viewBox="0 0 300 100" aria-label="Motion trace">
-      <path d="M0 50H300" className="trace-grid" />
-      {pointer.length > 1 ? (
-        <polyline points={pointer.join(' ')} className="trace-pointer" />
-      ) : null}
-      {surface.length > 1 ? (
-        <polyline points={surface.join(' ')} className="trace-surface" />
-      ) : null}
-    </svg>
-  );
 }
 
 export function SheetFeelLab() {
@@ -107,16 +47,6 @@ export function SheetFeelLab() {
       scenarioManifest.scenarios[0]!,
     [scenarioId],
   );
-
-  useEffect(() => {
-    const snapshot = {
-      primitive: scenarioManifest.primitive,
-      scenario: scenario.id,
-      samples: telemetry.samples,
-      summary: telemetry.summary,
-    };
-    (window as Window & { __PWACN_FEEL__?: typeof snapshot }).__PWACN_FEEL__ = snapshot;
-  }, [scenario.id, telemetry.samples, telemetry.summary]);
 
   const selectScenario = (next: Scenario) => {
     setScenarioId(next.id);
@@ -221,43 +151,11 @@ export function SheetFeelLab() {
         className="feel-sheet"
       >
         <SheetScrollArea className="feel-sheet-scroll">
-          <div className="feel-inspector" aria-live="polite">
-            <div className="inspector-title">
-              <span>LIVE MOTION TRACE</span>
-              <b data-feel-state="">{telemetry.current?.state ?? 'ready'}</b>
-            </div>
-            <MotionTrace samples={telemetry.samples} />
-            <div className="trace-key">
-              <span>finger</span>
-              <span>surface</span>
-            </div>
-            <dl>
-              <div>
-                <dt>Owner</dt>
-                <dd>{telemetry.current?.gestureOwner ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>Surface velocity</dt>
-                <dd>{format(telemetry.current?.surfaceVelocityY ?? null, ' px/s')}</dd>
-              </div>
-              <div>
-                <dt>Mean tracking error</dt>
-                <dd>{format(telemetry.summary.meanTrackingErrorPx, ' px')}</dd>
-              </div>
-              <div>
-                <dt>Velocity continuity</dt>
-                <dd>{format(telemetry.summary.velocityContinuity)}</dd>
-              </div>
-              <div>
-                <dt>Settle time</dt>
-                <dd>{format(telemetry.summary.settleTimeMs, ' ms')}</dd>
-              </div>
-              <div>
-                <dt>Intervals over 20 ms</dt>
-                <dd>{telemetry.summary.longFrames}</dd>
-              </div>
-            </dl>
-          </div>
+          <FeelInspector
+            telemetry={telemetry}
+            primitive={scenarioManifest.primitive}
+            scenario={scenario.id}
+          />
           <div className="fixture-content">
             <span className="lab-kicker">SCENARIO / {scenario.id.toUpperCase()}</span>
             <h2>{scenario.label}</h2>

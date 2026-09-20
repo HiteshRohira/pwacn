@@ -501,6 +501,35 @@ button {
 .feel-demo-button b {
   font-size: 22px;
 }
+.feel-demo-press-target {
+  width: 100%;
+  min-height: 88px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgb(239 255 122 / 0.35);
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  color: #efff7a;
+  text-align: left;
+  background: rgb(239 255 122 / 0.05);
+  transition:
+    transform 100ms ease-out,
+    background 100ms ease-out;
+}
+.feel-demo-press-target[data-pressed='true'] {
+  transform: scale(0.965);
+  background: rgb(239 255 122 / 0.15);
+}
+.feel-demo-press-target span {
+  font-family: ui-monospace, 'SFMono-Regular', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.feel-demo-press-target b {
+  color: #fff;
+  font-size: 17px;
+}
 .settings-feel-sheet {
   background: #f2f2f7 !important;
 }

@@ -14,6 +14,8 @@ import {
   useToast,
 } from '@pwacn/react';
 import { useState } from 'react';
+import { InteractiveBackFeelLab } from './InteractiveBackFeelLab';
+import { PressFeelLab } from './PressFeelLab';
 import { SheetFeelLab } from './SheetFeelLab';
 
 type Mass = 'micro' | 'control' | 'surface';
@@ -118,6 +120,12 @@ function Lab() {
           <a className="feel-lab-link" href="/feel/sheet">
             Open isolated feel fixture <span>↗</span>
           </a>
+          <a className="feel-lab-link" href="/feel/press">
+            Inspect press response <span>↗</span>
+          </a>
+          <a className="feel-lab-link" href="/feel/interactive-back">
+            Inspect interactive back <span>↗</span>
+          </a>
           <Swipeable
             action={<span className="delete-action">Delete</span>}
             onCommit={() => toast({ message: 'Swipe committed', tone: 'warning' })}
@@ -207,7 +215,18 @@ function Lab() {
 }
 
 export function App() {
-  if (window.location.pathname === '/feel/sheet') return <SheetFeelLab />;
+  if (
+    ['/feel/sheet', '/feel/sheet-scroll', '/feel/snap-points'].includes(
+      window.location.pathname,
+    )
+  )
+    return <SheetFeelLab />;
+  if (['/feel/press', '/feel/button'].includes(window.location.pathname))
+    return <PressFeelLab />;
+  if (
+    ['/feel/interactive-back', '/feel/navigation-pop'].includes(window.location.pathname)
+  )
+    return <InteractiveBackFeelLab />;
   return (
     <ToastProvider>
       <Lab />

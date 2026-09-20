@@ -1,26 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 export type FeelTelemetryState =
-  'dragging' | 'releasing' | 'settling' | 'complete' | 'interrupted';
+  | 'contact'
+  | 'responding'
+  | 'dragging'
+  | 'releasing'
+  | 'settling'
+  | 'complete'
+  | 'interrupted'
+  | 'cancelled'
+  | 'route-commit';
 
 export type FeelTelemetrySample = Readonly<{
   timestamp: number;
   primitive: string;
   gesture: string;
   state: FeelTelemetryState;
+  axis?: 'x' | 'y';
+  pointerX?: number;
   pointerY?: number;
-  surfaceY: number;
+  surfaceX?: number;
+  surfaceY?: number;
+  surfaceScale?: number;
+  pointerVelocityX?: number;
   pointerVelocityY?: number;
-  surfaceVelocityY: number;
+  surfaceVelocityX?: number;
+  surfaceVelocityY?: number;
   trackingErrorPx?: number;
   activeSnapPoint?: number;
   targetSnapPoint?: number;
   gestureOwner?: string;
   frameIntervalMs?: number;
+  cancelled?: boolean;
 }>;
 
 export type FeelTelemetrySummary = Readonly<{
   sampleCount: number;
+  eventToCommitMs: number | null;
   meanTrackingErrorPx: number | null;
   p95TrackingErrorPx: number | null;
   releaseVelocityPxPerSec: number | null;
@@ -28,6 +44,8 @@ export type FeelTelemetrySummary = Readonly<{
   velocityContinuity: number | null;
   settleTimeMs: number | null;
   longFrames: number;
+  interruptions: number;
+  gestureTransfers: string[];
 }>;
 
 type Subscriber = (sample: FeelTelemetrySample) => void;
@@ -60,10 +78,30 @@ export function summarizeFeelTelemetry(
       sample.timestamp >= release.timestamp,
   );
   const complete = [...samples].reverse().find((sample) => sample.state === 'complete');
-  const releaseVelocity = release?.pointerVelocityY ?? null;
-  const initialVelocity = initialAnimation?.surfaceVelocityY ?? null;
+  const contact = samples.find((sample) => sample.state === 'contact');
+  const response = samples.find((sample) => sample.state === 'responding');
+  const axis = release?.axis ?? initialAnimation?.axis ?? 'y';
+  const releaseVelocity = release
+    ? axis === 'x'
+      ? (release.pointerVelocityX ?? null)
+      : (release.pointerVelocityY ?? null)
+    : null;
+  const initialVelocity = initialAnimation
+    ? axis === 'x'
+      ? (initialAnimation.surfaceVelocityX ?? null)
+      : (initialAnimation.surfaceVelocityY ?? null)
+    : null;
+  const gestureTransfers = [
+    ...new Set(
+      samples
+        .map((sample) => sample.gestureOwner)
+        .filter((owner): owner is string => owner != null),
+    ),
+  ];
   return {
     sampleCount: samples.length,
+    eventToCommitMs:
+      contact && response ? Math.max(0, response.timestamp - contact.timestamp) : null,
     meanTrackingErrorPx: tracking.length
       ? tracking.reduce((total, value) => total + value, 0) / tracking.length
       : null,
@@ -80,6 +118,8 @@ export function summarizeFeelTelemetry(
     settleTimeMs:
       release && complete ? Math.max(0, complete.timestamp - release.timestamp) : null,
     longFrames: samples.filter((sample) => (sample.frameIntervalMs ?? 0) > 20).length,
+    interruptions: samples.filter((sample) => sample.state === 'interrupted').length,
+    gestureTransfers,
   };
 }
 

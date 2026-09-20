@@ -1,0 +1,21 @@
+{
+  "platform": "Android",
+  "primitive": "BottomSheet",
+  "status": "recording-required",
+  "requiredScenarios": [
+    "slow-snap",
+    "fast-dismiss",
+    "overdrag-top",
+    "interrupt-settle",
+    "scroll-handoff"
+  ],
+  "metadataRequired": [
+    "device",
+    "osVersion",
+    "app",
+    "screen",
+    "refreshRate",
+    "captureFps",
+    "removeAnimations"
+  ]
+}

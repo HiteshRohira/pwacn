@@ -1,0 +1,94 @@
+{
+  "primitive": "Pressable",
+  "viewport": { "width": 393, "height": 852 },
+  "scenarios": [
+    {
+      "id": "quick-tap",
+      "label": "Quick tap",
+      "intent": "Acknowledge contact before activation and release from the current scale.",
+      "invariants": [
+        "response begins on pointerdown",
+        "activation occurs on release",
+        "release spring completes"
+      ],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 72, "dx": 0, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "slow-press",
+      "label": "Slow press",
+      "intent": "Hold the compressed state without drifting, then release coherently.",
+      "invariants": [
+        "pressed state remains stable",
+        "no click before release",
+        "mass token is preserved"
+      ],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 520, "dx": 0, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "drag-away",
+      "label": "Drag away",
+      "intent": "Cancel activation when the pointer leaves the allowed movement region.",
+      "invariants": [
+        "pressed state clears",
+        "activation is cancelled",
+        "release remains smooth"
+      ],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 120, "dx": 72, "dy": 0 },
+          { "t": 240, "dx": 96, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "drag-back",
+      "label": "Drag away and back",
+      "intent": "Restore the pressed state when the same pointer returns before release.",
+      "invariants": [
+        "away cancels visually",
+        "return restores contact",
+        "release activates once"
+      ],
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 120, "dx": 72, "dy": 0 },
+          { "t": 260, "dx": 0, "dy": 0 },
+          { "t": 340, "dx": 0, "dy": 0 }
+        ]
+      ]
+    },
+    {
+      "id": "rapid-repeat",
+      "label": "Rapid repeat",
+      "intent": "Allow a new contact to interrupt the active release spring without lag.",
+      "invariants": [
+        "second contact is immediate",
+        "no stuck pressed state",
+        "two activations complete"
+      ],
+      "pauseBetweenTracesMs": 45,
+      "traces": [
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 60, "dx": 0, "dy": 0 }
+        ],
+        [
+          { "t": 0, "dx": 0, "dy": 0 },
+          { "t": 65, "dx": 0, "dy": 0 }
+        ]
+      ]
+    }
+  ]
+}

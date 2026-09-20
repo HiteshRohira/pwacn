@@ -32,4 +32,16 @@ describe('feel telemetry summaries', () => {
     expect(summary.settleTimeMs).toBe(250);
     expect(summary.longFrames).toBe(1);
   });
+
+  it('summarizes contact response, interruptions, and gesture ownership', () => {
+    const summary = summarizeFeelTelemetry([
+      sample({ timestamp: 10, state: 'contact', gestureOwner: 'scroll' }),
+      sample({ timestamp: 14.5, state: 'responding', gestureOwner: 'sheet' }),
+      sample({ timestamp: 20, state: 'interrupted', gestureOwner: 'sheet' }),
+    ]);
+
+    expect(summary.eventToCommitMs).toBe(4.5);
+    expect(summary.interruptions).toBe(1);
+    expect(summary.gestureTransfers).toEqual(['scroll', 'sheet']);
+  });
 });

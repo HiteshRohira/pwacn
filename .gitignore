@@ -6,3 +6,5 @@ test-results
 .DS_Store
 *.local
 .ux-artifacts/
+ux-research/references/**/*.mov
+ux-research/references/**/*.mp4

@@ -19,3 +19,30 @@ test('the sheet feel fixture records a deterministic drag and release', async ({
   expect(telemetry.samples.some((sample) => sample.state === 'releasing')).toBe(true);
   expect(telemetry.summary.sampleCount).toBeGreaterThan(3);
 });
+
+test('the press fixture records contact before activation', async ({ page }) => {
+  await page.goto('/feel/press?scenario=quick-tap');
+  await page.getByRole('button', { name: /Replay exact trace/ }).click();
+  await expect(page.locator('[data-feel-state]')).toContainText(/releasing|complete/);
+  const telemetry = await page.evaluate(() => window.__PWACN_FEEL__!);
+  const states = telemetry.samples.map((sample) => sample.state);
+  expect(states).toContain('contact');
+  expect(states).toContain('responding');
+  expect(telemetry.summary.eventToCommitMs).not.toBeNull();
+  await expect(page.getByText('commit 01')).toBeVisible();
+});
+
+test('the interactive back fixture commits a deterministic edge gesture', async ({
+  page,
+}) => {
+  await page.goto('/feel/interactive-back?scenario=slow-commit');
+  const replay = page.getByRole('button', { name: /Replay exact trace/ });
+  await replay.click();
+  await expect(replay).toBeEnabled({ timeout: 5000 });
+  await expect(page.getByRole('heading', { name: /Spatial index/ })).toBeVisible();
+  const telemetry = await page.evaluate(() => window.__PWACN_FEEL__!);
+  const states = telemetry.samples.map((sample) => sample.state);
+  expect(states).toContain('dragging');
+  expect(states).toContain('releasing');
+  expect(states).toContain('route-commit');
+});
