@@ -1365,7 +1365,7 @@ function DeveloperFeelScreen() {
         </section>
         <Group
           title="CANONICAL TESTS"
-          footer="For interactive back, open any detail screen and drag from the left edge. Release past halfway to commit; reverse direction to cancel."
+          footer="For interactive back, swipe right from the screen body. The physical left edge stays reserved for the system browser gesture."
         >
           <SettingsRow label="Press" value="Hold · leave · return" />
           <SettingsRow label="Sheet" value="Drag · flick · interrupt" />
@@ -1686,12 +1686,12 @@ export function SettingsApp() {
     <ToastProvider>
       <div className="settings-stage">
         <div className="device-shell">
-          <MobileStack initialScreen={<SettingsHome />} />
+          <MobileStack initialScreen={<SettingsHome />} backGestureRegion="screen" />
         </div>
         <aside className="demo-caption">
           <strong>pwacn</strong>
           <span>Settings interaction benchmark</span>
-          <small>Press rows · drag from the left edge · toggle controls</small>
+          <small>Press rows · swipe right from the screen body · toggle controls</small>
         </aside>
       </div>
     </ToastProvider>

@@ -17,6 +17,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  type PointerEvent,
   type ReactNode,
 } from 'react';
 import { emitFeelTelemetry } from './feel-telemetry';
@@ -49,11 +50,13 @@ export function useMobileStack(): Navigation {
 export function MobileStack({
   initialScreen,
   edgeBack = true,
+  backGestureRegion = 'edge',
   maxMountedScreens = 3,
   history = 'browser',
 }: {
   initialScreen: ReactNode;
   edgeBack?: boolean;
+  backGestureRegion?: 'edge' | 'screen';
   maxMountedScreens?: number;
   history?: 'browser' | 'memory';
 }) {
@@ -198,6 +201,40 @@ export function MobileStack({
     return () => cancelAnimationFrame(frame);
   }, [activeEntry]);
 
+  const beginInteractiveBack = (event: PointerEvent<HTMLDivElement>) => {
+    if (backMotionState.current === 'settling') {
+      emitFeelTelemetry({
+        timestamp: performance.now(),
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'interrupted',
+        axis: 'x',
+        pointerX: event.clientX,
+        surfaceX: 0,
+        gestureOwner: 'edge-back',
+      });
+    }
+    if (
+      gestureCoordinator.claim(event.pointerId, {
+        owner: 'edge-back',
+        axis: 'x',
+        priority: 100,
+      })
+    ) {
+      emitFeelTelemetry({
+        timestamp: performance.now(),
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'contact',
+        axis: 'x',
+        pointerX: event.clientX,
+        surfaceX: 0,
+        gestureOwner: 'edge-back',
+      });
+      dragControls.start(event);
+    }
+  };
+
   return (
     <NavigationContext.Provider value={navigation}>
       <div
@@ -252,6 +289,33 @@ export function MobileStack({
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={{ left: 0, right: 0.82 }}
                 dragDirectionLock
+                data-pwacn-back-surface={
+                  active &&
+                  edgeBack &&
+                  backGestureRegion === 'screen' &&
+                  state.entries.length > 1 &&
+                  !modal
+                    ? ''
+                    : undefined
+                }
+                onPointerDown={(event) => {
+                  if (
+                    !active ||
+                    !edgeBack ||
+                    backGestureRegion !== 'screen' ||
+                    state.entries.length <= 1 ||
+                    modal
+                  )
+                    return;
+                  const target = event.target as Element;
+                  if (target.closest('[data-pwacn-back-gesture="capture"]')) return;
+                  const relativeX =
+                    event.clientX - event.currentTarget.getBoundingClientRect().left;
+                  // Safari owns the physical leading edge. Starting the custom gesture
+                  // there would make both the page and the in-app stack navigate.
+                  if (relativeX <= gestures.edgeBack.edgeWidth) return;
+                  beginInteractiveBack(event);
+                }}
                 onDragStart={(_, info) => {
                   if (backMotionState.current === 'dragging') return;
                   backMotionState.current = 'dragging';
@@ -368,6 +432,8 @@ export function MobileStack({
                   minHeight: '100%',
                   pointerEvents: active ? 'auto' : 'none',
                   overflow: 'hidden',
+                  touchAction:
+                    active && backGestureRegion === 'screen' ? 'pan-y' : undefined,
                   background: 'var(--pwacn-screen-background, #f2f2f7)',
                   boxShadow:
                     active && state.entries.length > 1
@@ -377,43 +443,15 @@ export function MobileStack({
                 }}
               >
                 {entry.data?.node}
-                {active && edgeBack && state.entries.length > 1 && !modal ? (
+                {active &&
+                edgeBack &&
+                backGestureRegion === 'edge' &&
+                state.entries.length > 1 &&
+                !modal ? (
                   <div
                     aria-hidden="true"
                     data-pwacn-edge-back=""
-                    onPointerDown={(event) => {
-                      if (backMotionState.current === 'settling') {
-                        emitFeelTelemetry({
-                          timestamp: performance.now(),
-                          primitive: 'InteractiveBack',
-                          gesture: 'edge-back',
-                          state: 'interrupted',
-                          axis: 'x',
-                          pointerX: event.clientX,
-                          surfaceX: 0,
-                          gestureOwner: 'edge-back',
-                        });
-                      }
-                      if (
-                        gestureCoordinator.claim(event.pointerId, {
-                          owner: 'edge-back',
-                          axis: 'x',
-                          priority: 100,
-                        })
-                      ) {
-                        emitFeelTelemetry({
-                          timestamp: performance.now(),
-                          primitive: 'InteractiveBack',
-                          gesture: 'edge-back',
-                          state: 'contact',
-                          axis: 'x',
-                          pointerX: event.clientX,
-                          surfaceX: 0,
-                          gestureOwner: 'edge-back',
-                        });
-                        dragControls.start(event);
-                      }
-                    }}
+                    onPointerDown={beginInteractiveBack}
                     style={{
                       position: 'absolute',
                       inset: `0 auto 0 0`,

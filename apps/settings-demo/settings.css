@@ -531,7 +531,8 @@ button {
   font-size: 17px;
 }
 .settings-feel-sheet {
-  background: #f2f2f7 !important;
+  color: var(--pwacn-sheet-foreground);
+  background: var(--pwacn-sheet-background) !important;
 }
 .settings-feel-scroll {
   height: calc(100% - 30px);

@@ -48,6 +48,11 @@ Spatial surfaces and feedback:
 Navigation:
 
 - `MobileStack`, `useMobileStack`, `SharedElement`
+
+`MobileStack` defaults to an edge-origin back gesture. Set
+`backGestureRegion="screen"` when the browser's physical edge must remain system-owned and
+the app should recognize a right-swipe from the screen body instead.
+
 - preserved screens and scroll positions
 - browser history synchronization and progressive View Transitions
 - leading-edge-only interactive back navigation

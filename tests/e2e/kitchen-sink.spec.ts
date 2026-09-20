@@ -64,3 +64,49 @@ test('developer screen exposes the on-device interaction feel lab', async ({ pag
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Bottom Sheet feel test' })).toBeHidden();
 });
+
+test('body swipe navigates back without claiming the system edge', async ({ page }) => {
+  await page.goto(url);
+  await page.getByRole('button', { name: /Personal Hotspot/ }).tap();
+  await expect(page.getByRole('heading', { name: 'Personal Hotspot' })).toBeVisible();
+  await page.locator('[data-pwacn-back-surface]').evaluate(async (surface) => {
+    const box = surface.getBoundingClientRect();
+    const y = box.top + box.height * 0.45;
+    const xs = [0.48, 0.62, 0.78, 0.94].map(
+      (progress) => box.left + box.width * progress,
+    );
+    const send = (type: string, x: number, buttons: number) =>
+      surface.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 77,
+          pointerType: 'touch',
+          isPrimary: true,
+          button: 0,
+          buttons,
+          clientX: x,
+          clientY: y,
+        }),
+      );
+    send('pointerdown', xs[0]!, 1);
+    for (const x of xs.slice(1)) {
+      await new Promise((resolve) => setTimeout(resolve, 70));
+      send('pointermove', x, 1);
+    }
+    send('pointerup', xs.at(-1)!, 0);
+  });
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+});
+
+test('the feel sheet keeps a coherent dark appearance', async ({ page }) => {
+  await page.goto(url);
+  await page.getByRole('button', { name: /Display & Brightness/ }).tap();
+  await page.getByRole('button', { name: 'Dark' }).tap();
+  await page.getByRole('button', { name: /Settings/ }).tap();
+  await page.getByRole('button', { name: /Developer/ }).tap();
+  await page.getByRole('button', { name: /Open sheet test/ }).tap();
+  const dialog = page.getByRole('dialog', { name: 'Bottom Sheet feel test' });
+  await expect(dialog).toHaveCSS('background-color', 'rgb(28, 28, 30)');
+  await expect(dialog).toHaveCSS('color', 'rgb(255, 255, 255)');
+});

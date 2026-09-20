@@ -82,7 +82,7 @@ export function InteractiveBackFeelLab() {
   };
 
   const ensureDetail = async () => {
-    if (document.querySelector('[data-pwacn-edge-back]')) return;
+    if (document.querySelector('[data-pwacn-back-surface]')) return;
     document.querySelector<HTMLElement>('[data-open-back-detail]')?.click();
     await wait(600);
   };
@@ -93,7 +93,7 @@ export function InteractiveBackFeelLab() {
     try {
       await ensureDetail();
       await replayPointerTraces({
-        target: () => document.querySelector<HTMLElement>('[data-pwacn-edge-back]'),
+        target: () => document.querySelector<HTMLElement>('[data-pwacn-back-surface]'),
         traces: scenario.traces,
         pauseBetweenTracesMs: scenario.pauseBetweenTracesMs,
       });
@@ -141,7 +141,11 @@ export function InteractiveBackFeelLab() {
 
         <article className="back-stage">
           <div className="back-device">
-            <MobileStack initialScreen={<BackIndex />} history="memory" />
+            <MobileStack
+              initialScreen={<BackIndex />}
+              history="memory"
+              backGestureRegion="screen"
+            />
           </div>
           <div className="back-controls">
             <span className="lab-kicker">ACTIVE / {scenario.id}</span>
@@ -170,7 +174,7 @@ export function InteractiveBackFeelLab() {
         </article>
       </section>
       <footer className="feel-footer">
-        leading edge 24 px · distance 40% · velocity 600 px/s
+        system edge reserved 24 px · body swipe · distance 40% · velocity 600 px/s
       </footer>
     </main>
   );

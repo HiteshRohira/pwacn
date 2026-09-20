@@ -63,6 +63,7 @@ export function Swipeable({
   return (
     <div
       className={className}
+      data-pwacn-back-gesture="capture"
       style={{ position: 'relative', overflow: 'hidden', ...style }}
     >
       <div

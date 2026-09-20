@@ -35,4 +35,17 @@ describe('MobileStack', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     expect(window.location.pathname).toBe('/detail');
   });
+
+  it('exposes a screen gesture surface when full-screen back is requested', () => {
+    render(
+      <MobileStack
+        initialScreen={<Root />}
+        history="memory"
+        backGestureRegion="screen"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    expect(document.querySelector('[data-pwacn-back-surface]')).toBeInTheDocument();
+    expect(document.querySelector('[data-pwacn-edge-back]')).not.toBeInTheDocument();
+  });
 });
