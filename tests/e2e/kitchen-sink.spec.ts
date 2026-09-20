@@ -61,6 +61,6 @@ test('developer screen exposes the on-device interaction feel lab', async ({ pag
   await expect(
     page.getByRole('dialog', { name: 'Bottom Sheet feel test' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Close sheet' }).tap();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Bottom Sheet feel test' })).toBeHidden();
 });
