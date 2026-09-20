@@ -1369,7 +1369,7 @@ function DeveloperFeelScreen() {
         >
           <SettingsRow label="Press" value="Hold · leave · return" />
           <SettingsRow label="Sheet" value="Drag · flick · interrupt" />
-          <SettingsRow label="Back" value="Edge drag · reverse" />
+          <SettingsRow label="Back" value="Body swipe · reverse" />
         </Group>
         <Group
           title="LAST RUN"
@@ -1404,31 +1404,44 @@ function DeveloperFeelScreen() {
         open={sheet}
         onOpenChange={setSheet}
         title="Bottom Sheet feel test"
-        snapPoints={[0.35, 0.62, 0.92]}
-        initialSnap={0.62}
+        snapPoints={[0.72]}
+        initialSnap={0.72}
         className="settings-feel-sheet"
       >
         <SheetScrollArea className="settings-feel-scroll">
-          <div className="settings-feel-readout" aria-live="polite">
-            <span>LIVE / {telemetry.current?.state ?? 'READY'}</span>
-            <strong>
-              {Math.round(Math.abs(telemetry.current?.surfaceVelocityY ?? 0))}
-              <small> px/s</small>
-            </strong>
-            <p>Surface velocity</p>
-          </div>
-          <h2>Move this surface.</h2>
-          <p>
-            The backdrop, surface, and release spring are driven by the same continuous
-            motion value. A second touch should take control immediately.
-          </p>
-          {Array.from({ length: 9 }, (_, index) => (
-            <div className="settings-feel-row" key={index}>
-              <span>Scroll sample {index + 1}</span>
-              <small>{index % 2 ? 'boundary' : 'content'}</small>
+          <div className="settings-sheet-header">
+            <span className="settings-sheet-icon" aria-hidden="true">
+              ↕
+            </span>
+            <h2>Bottom Sheet</h2>
+            <p>Pull the handle down to dismiss.</p>
+            <div className="settings-sheet-metric" aria-live="polite">
+              <span>Motion state</span>
+              <strong>{telemetry.current?.state ?? 'Ready'}</strong>
+              <span>Surface velocity</span>
+              <strong>
+                {Math.round(Math.abs(telemetry.current?.surfaceVelocityY ?? 0))} px/s
+              </strong>
             </div>
-          ))}
-          <SheetClose className="settings-feel-close">Close feel test</SheetClose>
+          </div>
+          <section className="settings-sheet-section">
+            <h3>TRY IT</h3>
+            <div className="settings-sheet-list">
+              <div>
+                <span>Slow pull</span>
+                <small>Follows your finger</small>
+              </div>
+              <div>
+                <span>Fast flick</span>
+                <small>Velocity dismisses</small>
+              </div>
+              <div>
+                <span>Interrupt</span>
+                <small>Grab while settling</small>
+              </div>
+            </div>
+          </section>
+          <SheetClose className="settings-feel-close">Done</SheetClose>
         </SheetScrollArea>
       </BottomSheet>
     </>

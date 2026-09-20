@@ -36,7 +36,7 @@ import { emitFeelTelemetry } from './feel-telemetry';
 type SheetContextValue = {
   close: () => void;
   labelId: string;
-  beginDrag: (event: React.PointerEvent) => void;
+  beginDrag: (event: React.PointerEvent | globalThis.PointerEvent) => void;
 };
 const SheetContext = createContext<SheetContextValue | null>(null);
 
@@ -76,12 +76,22 @@ export function BottomSheet({
   const controls = useDragControls();
   const labelId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const dragOrigin = useRef<{ pointerY: number; surfaceY: number } | null>(null);
   const motionState = useRef<'idle' | 'dragging' | 'settling'>('idle');
   const lastMotionFrame = useRef<number | null>(null);
   const motionToken = useRef(0);
   const activeAnimation = useRef<ReturnType<typeof animate> | null>(null);
+  const handleDrag = useRef<{
+    pointerId: number;
+    startY: number;
+    surfaceY: number;
+    lastY: number;
+    lastTime: number;
+    velocity: number;
+    responded: boolean;
+  } | null>(null);
   const snapPointsKey = snapPoints.join(',');
   const normalizedSnaps = useMemo(
     () => normalizeSnapPoints(snapPointsKey),
@@ -218,7 +228,7 @@ export function BottomSheet({
     };
   }, [close, dismissible, open]);
 
-  const beginDrag = (event: ReactPointerEvent) => {
+  const beginDrag = (event: ReactPointerEvent | globalThis.PointerEvent) => {
     if (
       !gestureCoordinator.claim(event.pointerId, {
         owner: 'sheet',
@@ -244,6 +254,147 @@ export function BottomSheet({
     }
     controls.start(event);
   };
+
+  useEffect(() => {
+    const handle = handleRef.current;
+    if (!open || !handle) return;
+    const onPointerDown = (event: globalThis.PointerEvent) => {
+      if (
+        !gestureCoordinator.claim(event.pointerId, {
+          owner: 'sheet',
+          axis: 'y',
+          priority: 20,
+        })
+      )
+        return;
+      if (motionState.current === 'settling') {
+        emitFeelTelemetry({
+          timestamp: performance.now(),
+          primitive: 'BottomSheet',
+          gesture: 'drag-y',
+          state: 'interrupted',
+          pointerY: event.clientY,
+          surfaceY: y.get(),
+          surfaceVelocityY: y.getVelocity(),
+          activeSnapPoint: snap,
+          gestureOwner: 'sheet',
+        });
+      }
+      activeAnimation.current?.stop();
+      handleDrag.current = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        surfaceY: y.get(),
+        lastY: event.clientY,
+        lastTime: performance.now(),
+        velocity: 0,
+        responded: false,
+      };
+      motionState.current = 'dragging';
+      emitFeelTelemetry({
+        timestamp: performance.now(),
+        primitive: 'BottomSheet',
+        gesture: 'drag-y',
+        state: 'contact',
+        pointerY: event.clientY,
+        surfaceY: y.get(),
+        activeSnapPoint: snap,
+        gestureOwner: 'sheet',
+      });
+    };
+    const onPointerMove = (event: globalThis.PointerEvent) => {
+      const drag = handleDrag.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const timestamp = performance.now();
+      const elapsed = Math.max(1, timestamp - drag.lastTime);
+      drag.velocity = ((event.clientY - drag.lastY) / elapsed) * 1000;
+      drag.lastY = event.clientY;
+      drag.lastTime = timestamp;
+      const surfaceY = Math.max(0, drag.surfaceY + event.clientY - drag.startY);
+      y.set(surfaceY);
+      if (!drag.responded) {
+        drag.responded = true;
+        emitFeelTelemetry({
+          timestamp,
+          primitive: 'BottomSheet',
+          gesture: 'drag-y',
+          state: 'responding',
+          pointerY: event.clientY,
+          surfaceY,
+          activeSnapPoint: snap,
+          gestureOwner: 'sheet',
+        });
+      }
+      emitFeelTelemetry({
+        timestamp,
+        primitive: 'BottomSheet',
+        gesture: 'drag-y',
+        state: 'dragging',
+        pointerY: event.clientY,
+        surfaceY,
+        pointerVelocityY: drag.velocity,
+        surfaceVelocityY: y.getVelocity(),
+        activeSnapPoint: snap,
+        gestureOwner: 'sheet',
+      });
+      event.preventDefault();
+    };
+    const finish = (event: globalThis.PointerEvent) => {
+      const drag = handleDrag.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      handleDrag.current = null;
+      gestureCoordinator.release(event.pointerId, 'sheet');
+      const surfaceY = y.get();
+      const dismissDistance = Math.min(260, Math.max(140, height * 0.34));
+      const shouldDismiss =
+        dismissible &&
+        (surfaceY > snapOffset(snap) + dismissDistance ||
+          drag.velocity > gestures.sheet.dismissVelocity);
+      emitFeelTelemetry({
+        timestamp: performance.now(),
+        primitive: 'BottomSheet',
+        gesture: 'drag-y',
+        state: 'releasing',
+        pointerY: event.clientY,
+        surfaceY,
+        pointerVelocityY: drag.velocity,
+        surfaceVelocityY: y.getVelocity(),
+        activeSnapPoint: snap,
+        gestureOwner: 'sheet',
+      });
+      if (shouldDismiss) {
+        haptics.impact('light');
+        activeAnimation.current = animate(
+          y,
+          height,
+          reduced ? { duration: 0.01 } : { ...springs.dismiss, velocity: drag.velocity },
+        );
+        void activeAnimation.current.then(() => {
+          emitFeelTelemetry({
+            timestamp: performance.now(),
+            primitive: 'BottomSheet',
+            gesture: 'drag-y',
+            state: 'complete',
+            surfaceY: y.get(),
+            surfaceVelocityY: y.getVelocity(),
+          });
+          close();
+        });
+      } else {
+        settle(snap, drag.velocity);
+      }
+    };
+    handle.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      handle.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+  });
 
   if (typeof document === 'undefined') return null;
   return createPortal(
@@ -344,7 +495,9 @@ export function BottomSheet({
                 lastMotionFrame.current = null;
                 const current = y.get();
                 const projected = current + info.velocity.y * 0.16;
-                const lowest = snapOffset(normalizedSnaps.at(-1) ?? snap);
+                const lowestSnap = normalizedSnaps.at(-1) ?? snap;
+                const atLowestSnap = snap === lowestSnap;
+                const dismissDistance = Math.min(260, Math.max(140, height * 0.34));
                 emitFeelTelemetry({
                   timestamp: performance.now(),
                   primitive: 'BottomSheet',
@@ -359,7 +512,7 @@ export function BottomSheet({
                 });
                 if (
                   dismissible &&
-                  (projected > Math.max(lowest + 110, height * 0.82) ||
+                  ((atLowestSnap && projected > snapOffset(snap) + dismissDistance) ||
                     info.velocity.y > gestures.sheet.dismissVelocity)
                 ) {
                   haptics.impact('light');
@@ -396,16 +549,16 @@ export function BottomSheet({
               }}
             >
               <div
+                ref={handleRef}
                 className="pwacn-sheet-handle-zone"
-                onPointerDown={beginDrag}
-                style={{ padding: '10px 0 14px', cursor: 'grab', touchAction: 'none' }}
+                style={{ padding: '14px 0 20px', cursor: 'grab', touchAction: 'none' }}
               >
                 <div
                   style={{
                     width: 42,
                     height: 5,
                     borderRadius: 9,
-                    background: 'rgb(0 0 0 / .22)',
+                    background: 'var(--pwacn-sheet-handle, rgb(0 0 0 / .22))',
                     margin: 'auto',
                   }}
                 />

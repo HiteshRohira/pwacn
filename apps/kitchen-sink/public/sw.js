@@ -1,4 +1,4 @@
-const CACHE = 'settings-pwacn-v4';
+const CACHE = 'settings-pwacn-v5';
 self.addEventListener('install', (event) =>
   event.waitUntil(
     caches

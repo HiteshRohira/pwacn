@@ -1,6 +1,65 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const url = 'http://127.0.0.1:4174';
+
+async function swipeBack(page: Page) {
+  const surface = page.locator('[data-pwacn-back-surface]').last();
+  await expect(surface).toHaveCSS('transform', 'none');
+  await surface.evaluate(async (node) => {
+    const box = node.getBoundingClientRect();
+    const y = box.top + box.height * 0.45;
+    const xs = [0.48, 0.64, 0.8, 0.96].map((progress) => box.left + box.width * progress);
+    const send = (type: string, x: number, buttons: number) =>
+      node.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 77,
+          pointerType: 'touch',
+          isPrimary: true,
+          button: 0,
+          buttons,
+          clientX: x,
+          clientY: y,
+        }),
+      );
+    send('pointerdown', xs[0]!, 1);
+    for (const x of xs.slice(1)) {
+      await new Promise((resolve) => setTimeout(resolve, 70));
+      send('pointermove', x, 1);
+    }
+    send('pointerup', xs.at(-1)!, 0);
+  });
+}
+
+async function dragDeveloperSheetDown(page: Page) {
+  const handle = page.locator('.pwacn-sheet-handle-zone');
+  await handle.evaluate(async (node) => {
+    const box = node.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const send = (type: string, clientY: number, buttons: number) =>
+      node.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 88,
+          pointerType: 'touch',
+          isPrimary: true,
+          button: 0,
+          buttons,
+          clientX: x,
+          clientY,
+        }),
+      );
+    send('pointerdown', y, 1);
+    for (const offset of [100, 220, 330]) {
+      await new Promise((resolve) => setTimeout(resolve, 90));
+      send('pointermove', y + offset, 1);
+    }
+    send('pointerup', y + 330, 0);
+  });
+}
 
 test('settings controls, search, and navigation are functional', async ({ page }) => {
   await page.goto(url);
@@ -56,12 +115,12 @@ test('developer screen exposes the on-device interaction feel lab', async ({ pag
   await page.getByRole('button', { name: /Developer/ }).tap();
   await expect(page.getByRole('heading', { name: 'Interaction Feel Lab' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Press feel target' })).toBeVisible();
-  await expect(page.getByText('Edge drag · reverse')).toBeVisible();
+  await expect(page.getByText('Body swipe · reverse')).toBeVisible();
   await page.getByRole('button', { name: /Open sheet test/ }).tap();
   await expect(
     page.getByRole('dialog', { name: 'Bottom Sheet feel test' }),
   ).toBeVisible();
-  await page.keyboard.press('Escape');
+  await dragDeveloperSheetDown(page);
   await expect(page.getByRole('dialog', { name: 'Bottom Sheet feel test' })).toBeHidden();
 });
 
@@ -69,34 +128,33 @@ test('body swipe navigates back without claiming the system edge', async ({ page
   await page.goto(url);
   await page.getByRole('button', { name: /Personal Hotspot/ }).tap();
   await expect(page.getByRole('heading', { name: 'Personal Hotspot' })).toBeVisible();
-  await page.locator('[data-pwacn-back-surface]').evaluate(async (surface) => {
-    const box = surface.getBoundingClientRect();
-    const y = box.top + box.height * 0.45;
-    const xs = [0.48, 0.62, 0.78, 0.94].map(
-      (progress) => box.left + box.width * progress,
-    );
-    const send = (type: string, x: number, buttons: number) =>
-      surface.dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          pointerId: 77,
-          pointerType: 'touch',
-          isPrimary: true,
-          button: 0,
-          buttons,
-          clientX: x,
-          clientY: y,
-        }),
-      );
-    send('pointerdown', xs[0]!, 1);
-    for (const x of xs.slice(1)) {
-      await new Promise((resolve) => setTimeout(resolve, 70));
-      send('pointermove', x, 1);
-    }
-    send('pointerup', xs.at(-1)!, 0);
-  });
+  await swipeBack(page);
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+});
+
+test('body swipe works at every nested stack depth', async ({ page }) => {
+  await page.goto(url);
+  await page.getByRole('button', { name: /General/ }).tap();
+  await page.getByRole('button', { name: /Software Update/ }).tap();
+  await expect(page.getByRole('heading', { name: 'Software Update' })).toBeVisible();
+  await swipeBack(page);
+  await expect(page.getByRole('heading', { name: 'General', level: 1 })).toBeVisible();
+  await swipeBack(page);
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+});
+
+test('app chrome prevents text selection but inputs remain selectable', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('.settings-stage')).toHaveCSS('user-select', 'none');
+  await expect(page.getByPlaceholder('Search')).toHaveCSS('user-select', 'text');
+  await page.getByRole('button', { name: /Developer/ }).tap();
+  await page.getByRole('button', { name: /Open sheet test/ }).tap();
+  await expect(page.getByRole('dialog', { name: 'Bottom Sheet feel test' })).toHaveCSS(
+    'user-select',
+    'none',
+  );
 });
 
 test('the feel sheet keeps a coherent dark appearance', async ({ page }) => {
