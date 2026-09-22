@@ -8,11 +8,12 @@ import {
   type StackState,
 } from '@pwacn/core';
 import {
-  AnimatePresence,
   animate,
   motion,
-  useDragControls,
   useMotionValue,
+  useTransform,
+  type AnimationPlaybackControls,
+  type MotionValue,
 } from 'motion/react';
 import {
   createContext,
@@ -23,6 +24,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type PointerEvent,
   type ReactNode,
 } from 'react';
@@ -30,20 +32,14 @@ import { emitFeelTelemetry } from './feel-telemetry';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
 
 type ScreenData = { node: ReactNode };
+type EntryOptions = { key?: string; pathname?: string; presentation?: Presentation };
 type Navigation = {
-  push: (
-    node: ReactNode,
-    options?: { key?: string; pathname?: string; presentation?: Presentation },
-  ) => void;
+  push: (node: ReactNode, options?: EntryOptions) => void;
   pop: (options?: { interactive?: boolean }) => void;
-  replace: (
-    node: ReactNode,
-    options?: { key?: string; pathname?: string; presentation?: Presentation },
-  ) => void;
+  replace: (node: ReactNode, options?: EntryOptions) => void;
   canGoBack: boolean;
   pathname: string;
 };
-
 const NavigationContext = createContext<Navigation | null>(null);
 
 export function useMobileStack(): Navigation {
@@ -52,284 +48,76 @@ export function useMobileStack(): Navigation {
   return context;
 }
 
+type Drag = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  origin: number;
+  lastX: number;
+  lastTime: number;
+  velocity: number;
+  axis: 'x' | 'y' | null;
+  responded: boolean;
+};
+
 function StackScreen({
   entry,
   active,
+  behind,
   modal,
   depth,
   zIndex,
   reduced,
+  interactive,
+  progress,
+  width,
   edgeBack,
   backGestureRegion,
-  navigation,
+  onPointerDown,
   screenRefs,
 }: {
   entry: StackEntry<ScreenData>;
   active: boolean;
+  behind: boolean;
   modal: boolean;
   depth: number;
   zIndex: number;
   reduced: boolean;
+  interactive: boolean;
+  progress: MotionValue<number>;
+  width: number;
   edgeBack: boolean;
   backGestureRegion: 'edge' | 'screen';
-  navigation: Navigation;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
   screenRefs: { current: Map<string, HTMLDivElement> };
 }) {
-  const dragControls = useDragControls();
-  const x = useMotionValue(0);
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const dragOrigin = useRef<{ pointerX: number; surfaceX: number } | null>(null);
-  const motionState = useRef<'idle' | 'dragging' | 'settling'>('idle');
-  const lastSample = useRef<{ timestamp: number; surfaceX: number } | null>(null);
-  const manualDrag = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    lastX: number;
-    lastTime: number;
-    velocity: number;
-    axis: 'x' | 'y' | null;
-    responded: boolean;
-  } | null>(null);
-  const canDragBack = active && edgeBack && depth > 1 && !modal;
-
-  const beginInteractiveBack = (
-    event: PointerEvent<HTMLDivElement> | globalThis.PointerEvent,
-  ) => {
-    if (!canDragBack) return;
-    if (motionState.current === 'settling') {
-      emitFeelTelemetry({
-        timestamp: performance.now(),
-        primitive: 'InteractiveBack',
-        gesture: 'edge-back',
-        state: 'interrupted',
-        axis: 'x',
-        pointerX: event.clientX,
-        surfaceX: 0,
-        gestureOwner: 'edge-back',
-      });
-    }
-    if (
-      !gestureCoordinator.claim(event.pointerId, {
-        owner: 'edge-back',
-        axis: 'x',
-        priority: 100,
-      })
-    )
-      return;
-    emitFeelTelemetry({
-      timestamp: performance.now(),
-      primitive: 'InteractiveBack',
-      gesture: 'edge-back',
-      state: 'contact',
-      axis: 'x',
-      pointerX: event.clientX,
-      surfaceX: 0,
-      gestureOwner: 'edge-back',
-    });
-    dragControls.start(event);
-  };
-
-  useEffect(() => {
-    const node = hostRef.current;
-    if (!node || !canDragBack || backGestureRegion !== 'screen') return;
-    const onPointerDown = (event: globalThis.PointerEvent) => {
-      const target = event.target as Element;
-      if (target.closest('[data-pwacn-back-gesture="capture"]')) return;
-      const relativeX = event.clientX - node.getBoundingClientRect().left;
-      if (relativeX <= gestures.edgeBack.edgeWidth) return;
-      if (
-        !gestureCoordinator.claim(event.pointerId, {
-          owner: 'edge-back',
-          axis: 'x',
-          priority: 100,
-        })
-      )
-        return;
-      manualDrag.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        lastX: event.clientX,
-        lastTime: performance.now(),
-        velocity: 0,
-        axis: null,
-        responded: false,
-      };
-      motionState.current = 'dragging';
-      emitFeelTelemetry({
-        timestamp: performance.now(),
-        primitive: 'InteractiveBack',
-        gesture: 'edge-back',
-        state: 'contact',
-        axis: 'x',
-        pointerX: event.clientX,
-        surfaceX: x.get(),
-        gestureOwner: 'edge-back',
-      });
-    };
-    const onPointerMove = (event: globalThis.PointerEvent) => {
-      const drag = manualDrag.current;
-      if (!drag || drag.pointerId !== event.pointerId) return;
-      const dx = event.clientX - drag.startX;
-      const dy = event.clientY - drag.startY;
-      if (!drag.axis && Math.hypot(dx, dy) >= gestures.swipe.activationDistance)
-        drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-      if (drag.axis === 'y') {
-        manualDrag.current = null;
-        gestureCoordinator.release(event.pointerId, 'edge-back');
-        return;
-      }
-      if (drag.axis !== 'x') return;
-      const timestamp = performance.now();
-      const elapsed = Math.max(1, timestamp - drag.lastTime);
-      drag.velocity = ((event.clientX - drag.lastX) / elapsed) * 1000;
-      drag.lastX = event.clientX;
-      drag.lastTime = timestamp;
-      const surfaceX = Math.max(0, dx);
-      x.set(surfaceX);
-      if (!drag.responded) {
-        drag.responded = true;
-        emitFeelTelemetry({
-          timestamp,
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'responding',
-          axis: 'x',
-          pointerX: event.clientX,
-          surfaceX,
-          gestureOwner: 'edge-back',
-        });
-      }
-      emitFeelTelemetry({
-        timestamp,
-        primitive: 'InteractiveBack',
-        gesture: 'edge-back',
-        state: 'dragging',
-        axis: 'x',
-        pointerX: event.clientX,
-        surfaceX,
-        pointerVelocityX: drag.velocity,
-        surfaceVelocityX: x.getVelocity(),
-        trackingErrorPx: Math.abs(dx - surfaceX),
-        gestureOwner: 'edge-back',
-      });
-      event.preventDefault();
-    };
-    const finish = (event: globalThis.PointerEvent) => {
-      const drag = manualDrag.current;
-      if (!drag || drag.pointerId !== event.pointerId) return;
-      manualDrag.current = null;
-      gestureCoordinator.release(event.pointerId, 'edge-back');
-      if (drag.axis !== 'x') return;
-      const surfaceX = x.get();
-      const width = node.getBoundingClientRect().width;
-      const committed =
-        surfaceX > width * gestures.edgeBack.commitProgress ||
-        drag.velocity > gestures.edgeBack.velocityThreshold;
-      emitFeelTelemetry({
-        timestamp: performance.now(),
-        primitive: 'InteractiveBack',
-        gesture: 'edge-back',
-        state: 'releasing',
-        axis: 'x',
-        pointerX: event.clientX,
-        surfaceX,
-        pointerVelocityX: drag.velocity,
-        surfaceVelocityX: x.getVelocity(),
-        gestureOwner: 'edge-back',
-      });
-      motionState.current = 'settling';
-      emitFeelTelemetry({
-        timestamp: performance.now(),
-        primitive: 'InteractiveBack',
-        gesture: 'edge-back',
-        state: 'settling',
-        axis: 'x',
-        surfaceX,
-        surfaceVelocityX: drag.velocity,
-        gestureOwner: 'edge-back',
-      });
-      if (committed) {
-        emitFeelTelemetry({
-          timestamp: performance.now(),
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'route-commit',
-          axis: 'x',
-          surfaceX,
-          surfaceVelocityX: drag.velocity,
-          gestureOwner: 'edge-back',
-        });
-        void animate(
-          x,
-          width,
-          reduced
-            ? { duration: 0.01 }
-            : { ...springs.navigation, velocity: drag.velocity },
-        ).then(() => {
-          navigation.pop({ interactive: true });
-          motionState.current = 'idle';
-          emitFeelTelemetry({
-            timestamp: performance.now(),
-            primitive: 'InteractiveBack',
-            gesture: 'edge-back',
-            state: 'complete',
-            axis: 'x',
-            surfaceX: width,
-            surfaceVelocityX: 0,
-          });
-        });
-      } else {
-        void animate(
-          x,
-          0,
-          reduced
-            ? { duration: 0.01 }
-            : { ...springs.navigation, velocity: drag.velocity },
-        ).then(() => {
-          motionState.current = 'idle';
-          emitFeelTelemetry({
-            timestamp: performance.now(),
-            primitive: 'InteractiveBack',
-            gesture: 'edge-back',
-            state: 'complete',
-            axis: 'x',
-            surfaceX: 0,
-            surfaceVelocityX: 0,
-          });
-        });
-      }
-    };
-    node.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove, { passive: false });
-    window.addEventListener('pointerup', finish);
-    window.addEventListener('pointercancel', finish);
-    return () => {
-      node.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', finish);
-      window.removeEventListener('pointercancel', finish);
-    };
-  });
-
+  const foregroundX = useTransform(progress, (value) => value);
+  const backgroundX = useTransform(progress, (value) => -width * 0.24 + value * 0.24);
+  const canDrag = active && edgeBack && depth > 1 && !modal;
   return (
     <motion.div
       ref={(node) => {
-        hostRef.current = node;
         if (node) screenRefs.current.set(entry.key, node);
         else screenRefs.current.delete(entry.key);
       }}
       data-pwacn-screen={active ? 'active' : 'preserved'}
+      data-pwacn-edge-back={canDrag && backGestureRegion === 'edge' ? '' : undefined}
+      data-pwacn-back-surface={canDrag && backGestureRegion === 'screen' ? '' : undefined}
       aria-hidden={!active}
       inert={!active}
       initial={
-        reduced ? { opacity: 0 } : { x: modal ? 0 : '100%', y: modal ? '100%' : 0 }
+        depth === 1
+          ? false
+          : reduced
+            ? { opacity: 0 }
+            : { x: modal ? 0 : '100%', y: modal ? '100%' : 0 }
       }
       animate={
-        active
-          ? { x: 0, y: 0, scale: 1, opacity: 1 }
-          : { x: modal ? 0 : '-24%', y: 0, scale: modal ? 0.96 : 1, opacity: 1 }
+        interactive && (active || behind)
+          ? false
+          : active
+            ? { x: 0, y: 0, scale: 1, opacity: 1 }
+            : { x: modal ? 0 : '-24%', y: 0, scale: modal ? 0.96 : 1, opacity: 1 }
       }
       exit={
         reduced
@@ -337,147 +125,34 @@ function StackScreen({
           : { x: modal ? 0 : '100%', y: modal ? '100%' : 0, opacity: 1 }
       }
       transition={reduced ? { duration: 0.01 } : springs.navigation}
-      drag={canDragBack && backGestureRegion === 'edge' ? 'x' : false}
-      dragControls={dragControls}
-      dragListener={false}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0, right: 0.82 }}
-      dragDirectionLock
-      data-pwacn-back-surface={
-        canDragBack && backGestureRegion === 'screen' ? '' : undefined
-      }
-      onDragStart={(_, info) => {
-        motionState.current = 'dragging';
-        lastSample.current = null;
-        dragOrigin.current = { pointerX: info.point.x, surfaceX: info.offset.x };
-        emitFeelTelemetry({
-          timestamp: performance.now(),
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'responding',
-          axis: 'x',
-          pointerX: info.point.x,
-          surfaceX: info.offset.x,
-          pointerVelocityX: info.velocity.x,
-          surfaceVelocityX: info.velocity.x,
-          gestureOwner: 'edge-back',
-        });
-      }}
-      onDrag={(_, info) => {
-        const timestamp = performance.now();
-        const previous = lastSample.current;
-        if (previous && Math.abs(previous.surfaceX - info.offset.x) < 0.25) return;
-        lastSample.current = { timestamp, surfaceX: info.offset.x };
-        const origin = dragOrigin.current;
-        emitFeelTelemetry({
-          timestamp,
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'dragging',
-          axis: 'x',
-          pointerX: info.point.x,
-          surfaceX: info.offset.x,
-          pointerVelocityX: info.velocity.x,
-          surfaceVelocityX: info.velocity.x,
-          trackingErrorPx: origin
-            ? info.point.x - origin.pointerX - (info.offset.x - origin.surfaceX)
-            : undefined,
-          gestureOwner: 'edge-back',
-          frameIntervalMs: previous ? timestamp - previous.timestamp : undefined,
-        });
-      }}
-      onDragEnd={(_, info) => {
-        if (motionState.current !== 'dragging') return;
-        gestureCoordinator.reset();
-        motionState.current = 'settling';
-        const width = hostRef.current?.getBoundingClientRect().width ?? window.innerWidth;
-        const committed =
-          info.offset.x > width * gestures.edgeBack.commitProgress ||
-          info.velocity.x > gestures.edgeBack.velocityThreshold;
-        emitFeelTelemetry({
-          timestamp: performance.now(),
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'releasing',
-          axis: 'x',
-          pointerX: info.point.x,
-          surfaceX: info.offset.x,
-          pointerVelocityX: info.velocity.x,
-          surfaceVelocityX: info.velocity.x,
-          gestureOwner: 'edge-back',
-        });
-        emitFeelTelemetry({
-          timestamp: performance.now(),
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'settling',
-          axis: 'x',
-          surfaceX: info.offset.x,
-          surfaceVelocityX: info.velocity.x,
-          gestureOwner: 'edge-back',
-        });
-        if (committed) {
-          emitFeelTelemetry({
-            timestamp: performance.now(),
-            primitive: 'InteractiveBack',
-            gesture: 'edge-back',
-            state: 'route-commit',
-            axis: 'x',
-            pointerX: info.point.x,
-            surfaceX: info.offset.x,
-            pointerVelocityX: info.velocity.x,
-            surfaceVelocityX: info.velocity.x,
-            gestureOwner: 'edge-back',
-          });
-          navigation.pop({ interactive: true });
-        }
-      }}
-      onDragTransitionEnd={() => {
-        if (motionState.current !== 'settling') return;
-        motionState.current = 'idle';
-        emitFeelTelemetry({
-          timestamp: performance.now(),
-          primitive: 'InteractiveBack',
-          gesture: 'edge-back',
-          state: 'complete',
-          axis: 'x',
-          surfaceX: 0,
-          surfaceVelocityX: 0,
-        });
-      }}
+      onPointerDown={canDrag ? onPointerDown : undefined}
       style={{
-        x: canDragBack && backGestureRegion === 'screen' ? x : undefined,
+        ...(interactive && active
+          ? { x: foregroundX }
+          : interactive && behind
+            ? { x: backgroundX }
+            : {}),
         position: 'absolute',
         inset: 0,
         minHeight: '100%',
         pointerEvents: active ? 'auto' : 'none',
         overflow: 'hidden',
-        touchAction: active && backGestureRegion === 'screen' ? 'pan-y' : undefined,
+        touchAction: canDrag && backGestureRegion === 'screen' ? 'pan-y' : undefined,
         background: 'var(--pwacn-screen-background, #f2f2f7)',
         boxShadow: active && depth > 1 ? '-12px 0 28px rgb(0 0 0 / .14)' : 'none',
         zIndex,
       }}
     >
       {entry.data?.node}
-      {canDragBack && backGestureRegion === 'edge' ? (
-        <div
-          aria-hidden="true"
-          data-pwacn-edge-back=""
-          onPointerDown={beginInteractiveBack}
-          style={{
-            position: 'absolute',
-            inset: '0 auto 0 0',
-            width: `max(${gestures.edgeBack.edgeWidth}px, env(safe-area-inset-left))`,
-            zIndex: 100,
-            touchAction: 'pan-y',
-          }}
-        />
-      ) : null}
     </motion.div>
   );
 }
 
-/** A preserved spatial stack with velocity-aware interactive back navigation. */
+/**
+ * A preserved screen stack. `history="browser"` adds same-URL entries solely to adapt
+ * platform Back; the stack owns screens and animation. `history="memory"` is fully local.
+ * An explicit pathname is optional and changes the URL only at navigation commitment.
+ */
 export function MobileStack({
   initialScreen,
   edgeBack = true,
@@ -494,7 +169,17 @@ export function MobileStack({
   const reduced = usePrefersReducedMotion();
   const screenRefs = useRef(new Map<string, HTMLDivElement>());
   const entryCache = useRef(new Map<string, StackEntry<ScreenData>>());
-  const suppressPop = useRef(false);
+  const stackRef = useRef<HTMLDivElement>(null);
+  const progress = useMotionValue(0);
+  const drag = useRef<Drag | null>(null);
+  const settle = useRef<AnimationPlaybackControls | null>(null);
+  const generation = useRef(0);
+  const pendingBack = useRef(false);
+  const gestureCommitted = useRef(false);
+  const [interactive, setInteractive] = useState(false);
+  const [width, setWidth] = useState(() =>
+    typeof window === 'undefined' ? 390 : window.innerWidth,
+  );
   const [state, dispatch] = useReducer(stackReducer<ScreenData>, {
     entries: [
       {
@@ -507,30 +192,78 @@ export function MobileStack({
     direction: 'replace',
   } satisfies StackState<ScreenData>);
   const entriesRef = useRef(state.entries);
-  const rootEntry = useRef(state.entries[0]);
   entriesRef.current = state.entries;
+  const rootEntry = useRef(state.entries[0]);
+
+  useLayoutEffect(() => {
+    const node = stackRef.current;
+    if (!node) return;
+    const update = () => setWidth(node.getBoundingClientRect().width);
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const abortGesture = useCallback(() => {
+    generation.current += 1;
+    settle.current?.stop();
+    settle.current = null;
+    if (drag.current) gestureCoordinator.release(drag.current.pointerId, 'edge-back');
+    drag.current = null;
+    progress.set(0);
+    setInteractive(false);
+  }, [progress]);
+
   const makeEntry = useCallback(
-    (
-      node: ReactNode,
-      options?: { key?: string; pathname?: string; presentation?: Presentation },
-    ): StackEntry<ScreenData> => {
-      const key = options?.key ?? crypto.randomUUID();
-      return {
-        key,
-        pathname:
-          options?.pathname ??
-          (options?.key
-            ? `/${encodeURIComponent(options.key)}`
-            : window.location.pathname),
-        presentation: options?.presentation ?? 'push',
-        data: { node },
-      };
-    },
+    (node: ReactNode, options?: EntryOptions): StackEntry<ScreenData> => ({
+      key: options?.key ?? crypto.randomUUID(),
+      pathname: options?.pathname ?? window.location.pathname,
+      presentation: options?.presentation ?? 'push',
+      data: { node },
+    }),
     [],
   );
+
+  const commitPop = useCallback(
+    (alreadyAnimated = false) => {
+      if (entriesRef.current.length <= 1 || pendingBack.current) return;
+      if (history === 'browser') {
+        gestureCommitted.current = alreadyAnimated;
+        pendingBack.current = true;
+        window.history.back();
+      } else if (alreadyAnimated) {
+        dispatch({ type: 'pop' });
+        progress.set(0);
+        setInteractive(false);
+      } else {
+        setInteractive(true);
+        const token = ++generation.current;
+        const control = animate(
+          progress,
+          width,
+          reduced ? { duration: 0.01 } : springs.navigation,
+        );
+        settle.current = control;
+        void control.then(() => {
+          if (token !== generation.current) return;
+          settle.current = null;
+          dispatch({ type: 'pop' });
+          progress.set(0);
+          setInteractive(false);
+        });
+      }
+    },
+    [history, progress, reduced, width],
+  );
+
   const navigation = useMemo<Navigation>(() => {
     const saveActiveScroll = () => {
-      const active = state.entries.at(-1);
+      const active = entriesRef.current.at(-1);
       const host = active ? screenRefs.current.get(active.key) : undefined;
       const scroll = host?.querySelector<HTMLElement>(
         '[data-pwacn-scroll],.settings-scroll,.detail-scroll',
@@ -544,6 +277,7 @@ export function MobileStack({
     };
     return {
       push: (node, options) => {
+        abortGesture();
         saveActiveScroll();
         const entry = makeEntry(node, options);
         entryCache.current.set(entry.key, entry);
@@ -555,15 +289,12 @@ export function MobileStack({
             entry.pathname,
           );
       },
-      pop: () => {
-        if (state.entries.length <= 1) return;
-        dispatch({ type: 'pop' });
-        if (history === 'browser') {
-          suppressPop.current = true;
-          window.history.back();
-        }
+      pop: (options) => {
+        if (!options?.interactive) abortGesture();
+        commitPop(options?.interactive);
       },
       replace: (node, options) => {
+        abortGesture();
         const entry = makeEntry(node, options);
         entryCache.current.set(entry.key, entry);
         dispatch({ type: 'replace', entry });
@@ -577,8 +308,7 @@ export function MobileStack({
       canGoBack: state.entries.length > 1,
       pathname: state.entries.at(-1)?.pathname ?? '/',
     };
-  }, [history, makeEntry, state.entries]);
-  const visibleEntries = state.entries.slice(-Math.max(2, maxMountedScreens));
+  }, [abortGesture, commitPop, history, makeEntry, state.entries]);
 
   useEffect(() => {
     if (history !== 'browser') return;
@@ -589,25 +319,63 @@ export function MobileStack({
       '',
     );
     const onPopState = (event: PopStateEvent) => {
-      if (suppressPop.current) {
-        suppressPop.current = false;
-        return;
-      }
+      pendingBack.current = false;
       const targetKey = event.state?.pwacnKey as string | undefined;
       const entries = entriesRef.current;
-      const currentIndex = entries.findIndex((entry) => entry.key === targetKey);
-      if (currentIndex >= 0 && currentIndex < entries.length - 1) {
-        dispatch({ type: 'pop' });
-        return;
+      const current = entries.at(-1);
+      if (targetKey === current?.key) return;
+      const targetIndex = entries.findIndex((entry) => entry.key === targetKey);
+      if (targetIndex >= 0 && targetIndex < entries.length - 1) {
+        const finish = () => {
+          entriesRef.current = entries.slice(0, targetIndex + 1);
+          dispatch({ type: 'pop-to', key: targetKey! });
+          progress.set(0);
+          setInteractive(false);
+        };
+        if (gestureCommitted.current) {
+          gestureCommitted.current = false;
+          finish();
+        } else if (targetIndex === entries.length - 2 && !settle.current) {
+          setInteractive(true);
+          const token = ++generation.current;
+          const control = animate(
+            progress,
+            width,
+            reduced ? { duration: 0.01 } : springs.navigation,
+          );
+          settle.current = control;
+          void control.then(() => {
+            if (generation.current !== token) return;
+            settle.current = null;
+            finish();
+          });
+        } else {
+          abortGesture();
+          finish();
+        }
+      } else {
+        abortGesture();
+        gestureCommitted.current = false;
+        const cached = targetKey ? entryCache.current.get(targetKey) : undefined;
+        if (cached) {
+          entriesRef.current = [...entries, cached];
+          dispatch({ type: 'push', entry: cached });
+        }
+        // An entry outside pwacn belongs to the platform/browser.
       }
-      const cached = targetKey ? entryCache.current.get(targetKey) : undefined;
-      if (cached) dispatch({ type: 'push', entry: cached });
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [history]);
+  }, [abortGesture, history, progress, reduced, width]);
 
   const activeEntry = state.entries.at(-1);
+  useEffect(() => {
+    // The outgoing surface is already at the edge; the revealed screen is at zero.
+    if (interactive && !drag.current && !settle.current) {
+      progress.set(0);
+      setInteractive(false);
+    }
+  }, [activeEntry?.key, interactive, progress]);
   useLayoutEffect(() => {
     if (!activeEntry) return;
     const frame = requestAnimationFrame(() => {
@@ -620,9 +388,206 @@ export function MobileStack({
     return () => cancelAnimationFrame(frame);
   }, [activeEntry]);
 
+  const onPointerDown = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      if (!edgeBack || entriesRef.current.length < 2 || drag.current) return;
+      if ((event.target as Element).closest('[data-pwacn-back-gesture="capture"]'))
+        return;
+      const box = event.currentTarget.getBoundingClientRect();
+      const relativeX = event.clientX - box.left;
+      if (
+        backGestureRegion === 'edge'
+          ? relativeX > gestures.edgeBack.edgeWidth
+          : relativeX <= gestures.edgeBack.edgeWidth
+      )
+        return;
+      if (
+        !gestureCoordinator.claim(event.pointerId, {
+          owner: 'edge-back',
+          axis: 'x',
+          priority: 100,
+        })
+      )
+        return;
+      if (settle.current) {
+        generation.current += 1;
+        settle.current.stop();
+        settle.current = null;
+        emitFeelTelemetry({
+          timestamp: performance.now(),
+          primitive: 'InteractiveBack',
+          gesture: 'edge-back',
+          state: 'interrupted',
+          axis: 'x',
+          pointerX: event.clientX,
+          surfaceX: progress.get(),
+          gestureOwner: 'edge-back',
+        });
+      }
+      const now = performance.now();
+      drag.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        origin: progress.get(),
+        lastX: event.clientX,
+        lastTime: now,
+        velocity: 0,
+        axis: null,
+        responded: false,
+      };
+      setInteractive(true);
+      emitFeelTelemetry({
+        timestamp: now,
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'contact',
+        axis: 'x',
+        pointerX: event.clientX,
+        surfaceX: progress.get(),
+        gestureOwner: 'edge-back',
+      });
+    },
+    [backGestureRegion, edgeBack, progress],
+  );
+
+  useEffect(() => {
+    const onMove = (event: globalThis.PointerEvent) => {
+      const current = drag.current;
+      if (!current || current.pointerId !== event.pointerId) return;
+      const dx = event.clientX - current.startX;
+      const dy = event.clientY - current.startY;
+      if (!current.axis && Math.hypot(dx, dy) >= gestures.swipe.activationDistance)
+        current.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (current.axis === 'y') {
+        gestureCoordinator.release(event.pointerId, 'edge-back');
+        drag.current = null;
+        if (current.origin === 0) setInteractive(false);
+        return;
+      }
+      if (current.axis !== 'x') return;
+      const now = performance.now();
+      current.velocity =
+        ((event.clientX - current.lastX) / Math.max(1, now - current.lastTime)) * 1000;
+      current.lastX = event.clientX;
+      current.lastTime = now;
+      const surfaceX = Math.min(width, Math.max(0, current.origin + dx));
+      progress.set(surfaceX);
+      if (!current.responded) {
+        current.responded = true;
+        emitFeelTelemetry({
+          timestamp: now,
+          primitive: 'InteractiveBack',
+          gesture: 'edge-back',
+          state: 'responding',
+          axis: 'x',
+          pointerX: event.clientX,
+          surfaceX,
+          gestureOwner: 'edge-back',
+        });
+      }
+      emitFeelTelemetry({
+        timestamp: now,
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'dragging',
+        axis: 'x',
+        pointerX: event.clientX,
+        surfaceX,
+        pointerVelocityX: current.velocity,
+        surfaceVelocityX: progress.getVelocity(),
+        trackingErrorPx: Math.abs(current.origin + dx - surfaceX),
+        gestureOwner: 'edge-back',
+      });
+      event.preventDefault();
+    };
+    const onFinish = (event: globalThis.PointerEvent) => {
+      const current = drag.current;
+      if (!current || current.pointerId !== event.pointerId) return;
+      drag.current = null;
+      gestureCoordinator.release(event.pointerId, 'edge-back');
+      if (current.axis !== 'x') {
+        if (current.origin === 0) setInteractive(false);
+        return;
+      }
+      const surfaceX = progress.get();
+      const committed =
+        event.type !== 'pointercancel' &&
+        (surfaceX > width * gestures.edgeBack.commitProgress ||
+          current.velocity > gestures.edgeBack.velocityThreshold);
+      const now = performance.now();
+      emitFeelTelemetry({
+        timestamp: now,
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'releasing',
+        axis: 'x',
+        pointerX: event.clientX,
+        surfaceX,
+        pointerVelocityX: current.velocity,
+        surfaceVelocityX: progress.getVelocity(),
+        gestureOwner: 'edge-back',
+      });
+      emitFeelTelemetry({
+        timestamp: now,
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'settling',
+        axis: 'x',
+        surfaceX,
+        surfaceVelocityX: current.velocity,
+        gestureOwner: 'edge-back',
+      });
+      const token = ++generation.current;
+      const control = animate(
+        progress,
+        committed ? width : 0,
+        reduced
+          ? { duration: 0.01 }
+          : { ...springs.navigation, velocity: current.velocity },
+      );
+      settle.current = control;
+      void control.then(() => {
+        if (token !== generation.current) return;
+        settle.current = null;
+        if (committed) {
+          emitFeelTelemetry({
+            timestamp: performance.now(),
+            primitive: 'InteractiveBack',
+            gesture: 'edge-back',
+            state: 'route-commit',
+            axis: 'x',
+            surfaceX: width,
+            gestureOwner: 'edge-back',
+          });
+          commitPop(true);
+        } else setInteractive(false);
+        emitFeelTelemetry({
+          timestamp: performance.now(),
+          primitive: 'InteractiveBack',
+          gesture: 'edge-back',
+          state: 'complete',
+          axis: 'x',
+          surfaceX: committed ? width : 0,
+          surfaceVelocityX: 0,
+        });
+      });
+    };
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onFinish);
+    window.addEventListener('pointercancel', onFinish);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onFinish);
+      window.removeEventListener('pointercancel', onFinish);
+    };
+  }, [commitPop, progress, reduced, width]);
+
+  const visibleEntries = state.entries.slice(-Math.max(2, maxMountedScreens));
   return (
     <NavigationContext.Provider value={navigation}>
       <div
+        ref={stackRef}
         data-pwacn-stack=""
         style={{
           position: 'relative',
@@ -631,27 +596,27 @@ export function MobileStack({
           overflow: 'hidden',
         }}
       >
-        <AnimatePresence initial={false} mode="popLayout">
-          {visibleEntries.map((entry, index) => {
-            const active = index === visibleEntries.length - 1;
-            const modal = entry.presentation === 'modal';
-            return (
-              <StackScreen
-                key={entry.key}
-                entry={entry}
-                active={active}
-                modal={modal}
-                depth={state.entries.length}
-                zIndex={index}
-                reduced={reduced}
-                edgeBack={edgeBack}
-                backGestureRegion={backGestureRegion}
-                navigation={navigation}
-                screenRefs={screenRefs}
-              />
-            );
-          })}
-        </AnimatePresence>
+        <>
+          {visibleEntries.map((entry, index) => (
+            <StackScreen
+              key={entry.key}
+              entry={entry}
+              active={index === visibleEntries.length - 1}
+              behind={index === visibleEntries.length - 2}
+              modal={entry.presentation === 'modal'}
+              depth={state.entries.length}
+              zIndex={index}
+              reduced={reduced}
+              interactive={interactive}
+              progress={progress}
+              width={width}
+              edgeBack={edgeBack}
+              backGestureRegion={backGestureRegion}
+              onPointerDown={onPointerDown}
+              screenRefs={screenRefs}
+            />
+          ))}
+        </>
       </div>
     </NavigationContext.Provider>
   );

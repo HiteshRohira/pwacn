@@ -241,8 +241,11 @@ const details: Record<string, Detail> = {
     notes: [
       'Direction comes from stack semantics, never pathname guessing.',
       'Distinguishes push and modal presentation geometry.',
-      'Synchronizes browser history and restores per-screen scroll positions.',
-      'Interactive back begins only inside the leading-edge capture region.',
+      'The stack owns screens and animation; browser history is only an optional Back adapter.',
+      'Browser mode uses same-URL entries by default. An explicit pathname is optional.',
+      'Restores per-screen scroll positions and moves both screens from one gesture progress value.',
+      'Interactive back uses the leading edge by default; screen mode leaves the system edge to the browser.',
+      'Pointer-driven transitions never start View Transitions.',
     ],
   },
   sharedelement: {

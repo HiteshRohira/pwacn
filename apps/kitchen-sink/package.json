@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@pwacn/core": "workspace:*",
+    "@pwacn/offline": "workspace:*",
     "@pwacn/react": "workspace:*",
     "motion": "^12.23.12",
     "react": "^19.1.1",

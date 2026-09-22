@@ -74,6 +74,20 @@ function analyze(scenario, trace) {
     .slice(1)
     .filter((point, index) => Math.abs(point.x - connected[index].x) > 90);
   const errors = [];
+  const paired = trace.positions.filter(
+    (point) =>
+      point.connected &&
+      point.backgroundConnected &&
+      point.phase === 'dragging' &&
+      point.x > 12,
+  );
+  const stationaryBackground = paired.filter(
+    (point) => Math.abs(point.backgroundX - trace.initialBackgroundX) < 2,
+  );
+  const couplingErrors = paired.filter(
+    (point) =>
+      Math.abs(point.backgroundX - (trace.initialBackgroundX + point.x * 0.24)) > 12,
+  );
   const releaseSample = trace.telemetry.find((sample) => sample.state === 'releasing');
   const completeSample = trace.telemetry.find((sample) => sample.state === 'complete');
   const settleTimeMs =
@@ -92,6 +106,12 @@ function analyze(scenario, trace) {
     errors.push('rendered surface moved backwards after commit');
   if (discontinuities.length)
     errors.push('rendered surface jumped more than 90px between frames');
+  if (paired.length < (scenario.id === 'fast-flick' ? 1 : 3))
+    errors.push('insufficient paired foreground/background frames');
+  if (stationaryBackground.length > 2)
+    errors.push('background remained stationary while foreground moved');
+  if (couplingErrors.length > 2)
+    errors.push('foreground and background did not follow one progress value');
   if (scenario.commits !== trace.didNavigate)
     errors.push('route outcome did not match the scenario');
   return {
@@ -101,6 +121,8 @@ function analyze(scenario, trace) {
     settleTimeMs,
     backwardJumps: backwardJumps.length,
     discontinuities: discontinuities.length,
+    stationaryBackgroundFrames: stationaryBackground.length,
+    couplingErrors: couplingErrors.length,
   };
 }
 
@@ -150,6 +172,10 @@ for (const engine of engines) {
               globalThis.__pwacnSamples = [];
               const box = node.getBoundingClientRect();
               const positions = [];
+              const background = node.previousElementSibling;
+              const stackBox = node.parentElement.getBoundingClientRect();
+              const initialBackgroundX =
+                background?.getBoundingClientRect().left - stackBox.left;
               let phase = 'dragging';
               let sampling = true;
               const sample = (timestamp) => {
@@ -158,6 +184,8 @@ for (const engine of engines) {
                   timestamp,
                   x: rect.left - box.left,
                   connected: node.isConnected,
+                  backgroundConnected: Boolean(background?.isConnected),
+                  backgroundX: background?.getBoundingClientRect().left - stackBox.left,
                   phase,
                 });
                 if (sampling) globalThis.requestAnimationFrame(sample);
@@ -191,7 +219,11 @@ for (const engine of engines) {
               send('pointerup', startX + input.points.at(-1), 0);
               await new Promise((resolve) => setTimeout(resolve, 1600));
               sampling = false;
-              return { positions, telemetry: globalThis.__pwacnSamples };
+              return {
+                positions,
+                initialBackgroundX,
+                telemetry: globalThis.__pwacnSamples,
+              };
             },
             { points: scenario.points, delay: scenario.delay },
           );

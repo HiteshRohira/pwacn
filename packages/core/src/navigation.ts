@@ -16,6 +16,7 @@ export type StackState<T = unknown> = {
 export type StackAction<T = unknown> =
   | { type: 'push'; entry: StackEntry<T> }
   | { type: 'pop' }
+  | { type: 'pop-to'; key: string }
   | { type: 'replace'; entry: StackEntry<T> }
   | { type: 'set-scroll'; key: string; scrollPosition: number };
 
@@ -30,6 +31,12 @@ export function stackReducer<T>(
       return state.entries.length <= 1
         ? state
         : { entries: state.entries.slice(0, -1), direction: 'pop' };
+    case 'pop-to': {
+      const index = state.entries.findIndex((entry) => entry.key === action.key);
+      return index < 0 || index === state.entries.length - 1
+        ? state
+        : { entries: state.entries.slice(0, index + 1), direction: 'pop' };
+    }
     case 'replace':
       return {
         entries: [...state.entries.slice(0, -1), action.entry],

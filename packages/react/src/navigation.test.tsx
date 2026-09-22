@@ -20,16 +20,16 @@ function Detail() {
 }
 
 describe('MobileStack', () => {
-  it('preserves screens and supports memory navigation', () => {
+  it('preserves screens and supports memory navigation', async () => {
     render(<MobileStack initialScreen={<Root />} history="memory" />);
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     expect(screen.getByRole('heading', { name: 'Detail' })).toBeVisible();
     expect(document.querySelector('[data-pwacn-edge-back]')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByRole('button', { name: 'Open' })).toBeVisible();
+    expect(await screen.findByRole('button', { name: 'Open' })).toBeVisible();
   });
 
-  it('synchronizes pushed paths with browser history', () => {
+  it('uses same-URL browser entries unless a pathname is explicitly requested', () => {
     window.history.replaceState(null, '', '/');
     render(<MobileStack initialScreen={<Root />} history="browser" />);
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));

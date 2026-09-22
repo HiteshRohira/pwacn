@@ -53,13 +53,26 @@ Navigation:
 
 - `MobileStack`, `useMobileStack`, `SharedElement`
 
-`MobileStack` defaults to an edge-origin back gesture. Set
-`backGestureRegion="screen"` when the browser's physical edge must remain system-owned and
-the app should recognize a right-swipe from the screen body instead.
+`MobileStack` owns the screen entries and all push, pop, and swipe animation. Push a full-screen
+menu or detail view as a screen; use a sheet for a temporary overlay. The app back button and
+swipe call the same stack controller. A swipe drives both visible screens from one progress
+value, including cancellation and settling. Pointer-driven transitions never start a browser
+View Transition; non-interactive transitions may use one.
+
+`history="browser"` (the default) writes same-URL history entries for platform Back. Browser
+Back requests a stack pop and browser Forward restores a cached screen. At the root, browser
+Back may leave the app. `history="memory"` keeps navigation entirely local. Pass an explicit
+`pathname` to `push` or `replace` only if your app wants URL changes. This history adapter
+does not own animation or cause a page reload. iOS and Android system-edge behavior can
+differ; `backGestureRegion="screen"` lets the browser own its physical edge while pwacn
+recognizes swipes from the screen body.
+
+One URL does not imply eager JavaScript loading. Split screens into chunks when useful and
+include every required chunk in the offline build described below.
 
 - preserved screens and scroll positions
-- browser history synchronization with framework-owned spatial transitions
-- leading-edge-only interactive back navigation
+- app and platform Back through one controller
+- edge or full-screen gesture region
 
 ```tsx
 import { BottomSheet, Pressable, SheetScrollArea } from '@pwacn/react';
@@ -75,6 +88,38 @@ import { BottomSheet, Pressable, SheetScrollArea } from '@pwacn/react';
   <SheetScrollArea>{comments}</SheetScrollArea>
 </BottomSheet>
 ```
+
+## Offline-ready builds
+
+For Vite apps, install `@pwacn/offline` and add `pwacnOffline()` to the production Vite
+plugins. The plugin generates `sw.js` and `offline-assets.json` from the finished build. It
+includes local HTML, CSS, JavaScript chunks, fonts, icons, manifest, and other bundled files,
+including lazy-loaded screens. Bundle required assets locally; remote APIs and CDN files are
+outside the static readiness guarantee.
+
+```tsx
+// vite.config.ts
+import { pwacnOffline } from '@pwacn/offline';
+export default defineConfig({ plugins: [react(), pwacnOffline()] });
+
+// App.tsx
+const offline = useOfflineReadiness(); // from @pwacn/react
+// 'preparing' | 'ready' | 'unavailable' | 'unsupported'
+```
+
+Show “Ready offline” only for `ready`. The worker verifies SHA-256 hashes while installing
+and does not activate an incomplete build. It serves required assets from the complete cache
+without a network wait, keeps the previous complete build and serves its old chunks to open tabs through an update, and checks for
+missing cached assets when queried. After storage eviction it downloads missing assets when
+online; an offline launch without cached HTML shows a recovery page. Browser storage may be
+evicted later, so readiness describes the current cache, not a permanent installation promise.
+The worker never substitutes HTML for a missing JavaScript or CSS file.
+
+Run `node scripts/verify-offline.mjs` after building the kitchen sink to exercise first
+install, offline cold launch, bundled screen navigation, incomplete update, coherent update,
+and cache-loss recovery in Chromium and WebKit. The WebKit loop simulates a failed network
+at the server because Playwright's WebKit offline toggle returned an internal navigation
+error; review installed iPhone behavior on a device.
 
 ## Gesture ownership
 

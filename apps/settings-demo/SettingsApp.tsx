@@ -18,8 +18,17 @@ import {
   useToast,
   useMobileStack,
 } from '@pwacn/react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import './settings.css';
+
+const OfflineStatusContext = createContext<string | undefined>(undefined);
 
 type IconName =
   | 'airplane'
@@ -1476,6 +1485,7 @@ function AppleAccountScreen() {
 }
 
 function SettingsHome() {
+  const offlineStatus = useContext(OfflineStatusContext);
   const nav = useMobileStack();
   const [query, setQuery] = useState('');
   const [airplane, setAirplane] = useState(false);
@@ -1651,6 +1661,15 @@ function SettingsHome() {
           </>
         )}
         <p className="ios-version">
+          {offlineStatus ? (
+            <span data-pwacn-offline-status="">
+              {offlineStatus === 'ready'
+                ? 'Ready offline'
+                : offlineStatus === 'preparing'
+                  ? 'Preparing offline…'
+                  : 'Offline copy unavailable'}
+            </span>
+          ) : null}
           iOS
           <br />
           <span>Designed with pwacn</span>
@@ -1660,12 +1679,14 @@ function SettingsHome() {
   );
 }
 
-export function SettingsApp() {
+export function SettingsApp({ offlineStatus }: { offlineStatus?: string } = {}) {
   return (
-    <ToastProvider>
-      <div className="settings-stage">
-        <MobileStack initialScreen={<SettingsHome />} backGestureRegion="screen" />
-      </div>
-    </ToastProvider>
+    <OfflineStatusContext.Provider value={offlineStatus}>
+      <ToastProvider>
+        <div className="settings-stage">
+          <MobileStack initialScreen={<SettingsHome />} backGestureRegion="screen" />
+        </div>
+      </ToastProvider>
+    </OfflineStatusContext.Provider>
   );
 }

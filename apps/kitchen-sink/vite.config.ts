@@ -1,8 +1,9 @@
 import react from '@vitejs/plugin-react';
+import { pwacnOffline } from '@pwacn/offline';
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), pwacnOffline()],
   resolve: {
     alias: [
       {

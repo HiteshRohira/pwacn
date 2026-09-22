@@ -66,7 +66,7 @@ pnpm feel:navigation
 
 This replays commit, flick, cancel, reversal, nested-stack, and scrolled-screen back gestures
 three times in Chromium/Android and real Playwright WebKit/iPhone. It samples the rendered
-screen position rather than trusting the animation model, enforces route and telemetry
+foreground and background positions on every frame rather than trusting the animation model, enforces route and telemetry
 invariants, checks settle-time repeatability, and writes normal-speed video, 0.25× video,
 screenshots, traces, and an audit to `.ux-artifacts/navigation/`.
 

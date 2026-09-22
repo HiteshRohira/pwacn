@@ -102,6 +102,9 @@ importers:
       '@pwacn/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@pwacn/offline':
+        specifier: workspace:*
+        version: link:../../packages/offline
       '@pwacn/react':
         specifier: workspace:*
         version: link:../../packages/react
@@ -197,6 +200,21 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
+
+  packages/offline:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.3.1
+        version: 24.13.5
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vite:
+        specifier: ^8.0.0
+        version: 8.3.0(@types/node@24.13.5)(esbuild@0.27.7)
 
   packages/react:
     dependencies:
