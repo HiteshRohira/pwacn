@@ -7,7 +7,8 @@
     "baseUrl": ".",
     "paths": {
       "@pwacn/core": ["packages/core/src/index.ts"],
-      "@pwacn/react": ["packages/react/src/index.ts"]
+      "@pwacn/react": ["packages/react/src/index.ts"],
+      "@pwacn/offline": ["packages/offline/src/index.ts"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
