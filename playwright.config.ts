@@ -21,8 +21,17 @@ export default defineConfig({
     },
   ],
   projects: [
-    { name: 'iphone-safari', use: { ...devices['iPhone 15 Pro'] } },
-    { name: 'pixel-chrome', use: { ...devices['Pixel 7'] } },
-    { name: 'galaxy-chrome', use: { ...devices['Galaxy S9+'] } },
+    {
+      name: 'iphone-safari',
+      use: { ...devices['iPhone 15 Pro'], browserName: 'webkit' },
+    },
+    {
+      name: 'pixel-chrome',
+      use: { ...devices['Pixel 7'], browserName: 'chromium' },
+    },
+    {
+      name: 'galaxy-chrome',
+      use: { ...devices['Galaxy S9+'], browserName: 'chromium' },
+    },
   ],
 });

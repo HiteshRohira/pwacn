@@ -108,7 +108,6 @@ export function BottomSheet({
     (nextSnap: number, releaseVelocity = 0, onComplete?: () => void) => {
       setSnap(nextSnap);
       onSnapChange?.(nextSnap);
-      motionState.current = 'settling';
       const token = ++motionToken.current;
       activeAnimation.current = animate(
         y,
@@ -145,7 +144,16 @@ export function BottomSheet({
     y.set(height);
     const frame = requestAnimationFrame(() => {
       sounds.play('open');
-      animate(y, snapOffset(next), reduced ? { duration: 0.01 } : springs.sheet);
+      motionState.current = 'settling';
+      const token = ++motionToken.current;
+      activeAnimation.current = animate(
+        y,
+        snapOffset(next),
+        reduced ? { duration: 0.01 } : springs.sheet,
+      );
+      void activeAnimation.current.then(() => {
+        if (token === motionToken.current) motionState.current = 'idle';
+      });
     });
     return () => cancelAnimationFrame(frame);
   }, [height, initialSnap, normalizedSnaps, open, reduced, snapOffset, y]);

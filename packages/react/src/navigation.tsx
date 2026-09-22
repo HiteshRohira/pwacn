@@ -7,7 +7,13 @@ import {
   type StackEntry,
   type StackState,
 } from '@pwacn/core';
-import { AnimatePresence, motion, useDragControls } from 'motion/react';
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useDragControls,
+  useMotionValue,
+} from 'motion/react';
 import {
   createContext,
   useCallback,
@@ -29,7 +35,7 @@ type Navigation = {
     node: ReactNode,
     options?: { key?: string; pathname?: string; presentation?: Presentation },
   ) => void;
-  pop: () => void;
+  pop: (options?: { interactive?: boolean }) => void;
   replace: (
     node: ReactNode,
     options?: { key?: string; pathname?: string; presentation?: Presentation },
@@ -70,6 +76,7 @@ function StackScreen({
   screenRefs: { current: Map<string, HTMLDivElement> };
 }) {
   const dragControls = useDragControls();
+  const x = useMotionValue(0);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const dragOrigin = useRef<{ pointerX: number; surfaceX: number } | null>(null);
   const motionState = useRef<'idle' | 'dragging' | 'settling'>('idle');
@@ -81,8 +88,8 @@ function StackScreen({
     lastX: number;
     lastTime: number;
     velocity: number;
-    responded: boolean;
     axis: 'x' | 'y' | null;
+    responded: boolean;
   } | null>(null);
   const canDragBack = active && edgeBack && depth > 1 && !modal;
 
@@ -146,8 +153,8 @@ function StackScreen({
         lastX: event.clientX,
         lastTime: performance.now(),
         velocity: 0,
-        responded: false,
         axis: null,
+        responded: false,
       };
       motionState.current = 'dragging';
       emitFeelTelemetry({
@@ -157,30 +164,30 @@ function StackScreen({
         state: 'contact',
         axis: 'x',
         pointerX: event.clientX,
-        surfaceX: 0,
+        surfaceX: x.get(),
         gestureOwner: 'edge-back',
       });
     };
     const onPointerMove = (event: globalThis.PointerEvent) => {
       const drag = manualDrag.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
-      const deltaX = event.clientX - drag.startX;
-      const deltaY = event.clientY - drag.startY;
-      if (!drag.axis && Math.hypot(deltaX, deltaY) >= gestures.swipe.activationDistance)
-        drag.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      if (!drag.axis && Math.hypot(dx, dy) >= gestures.swipe.activationDistance)
+        drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       if (drag.axis === 'y') {
         manualDrag.current = null;
         gestureCoordinator.release(event.pointerId, 'edge-back');
         return;
       }
-      if (!drag.axis) return;
+      if (drag.axis !== 'x') return;
       const timestamp = performance.now();
       const elapsed = Math.max(1, timestamp - drag.lastTime);
       drag.velocity = ((event.clientX - drag.lastX) / elapsed) * 1000;
       drag.lastX = event.clientX;
       drag.lastTime = timestamp;
-      const surfaceX = Math.max(0, deltaX);
-      node.style.transform = `translate3d(${surfaceX}px, 0, 0)`;
+      const surfaceX = Math.max(0, dx);
+      x.set(surfaceX);
       if (!drag.responded) {
         drag.responded = true;
         emitFeelTelemetry({
@@ -203,8 +210,8 @@ function StackScreen({
         pointerX: event.clientX,
         surfaceX,
         pointerVelocityX: drag.velocity,
-        surfaceVelocityX: drag.velocity,
-        trackingErrorPx: 0,
+        surfaceVelocityX: x.getVelocity(),
+        trackingErrorPx: Math.abs(dx - surfaceX),
         gestureOwner: 'edge-back',
       });
       event.preventDefault();
@@ -214,11 +221,8 @@ function StackScreen({
       if (!drag || drag.pointerId !== event.pointerId) return;
       manualDrag.current = null;
       gestureCoordinator.release(event.pointerId, 'edge-back');
-      if (drag.axis !== 'x') {
-        motionState.current = 'idle';
-        return;
-      }
-      const surfaceX = Math.max(0, event.clientX - drag.startX);
+      if (drag.axis !== 'x') return;
+      const surfaceX = x.get();
       const width = node.getBoundingClientRect().width;
       const committed =
         surfaceX > width * gestures.edgeBack.commitProgress ||
@@ -232,6 +236,17 @@ function StackScreen({
         pointerX: event.clientX,
         surfaceX,
         pointerVelocityX: drag.velocity,
+        surfaceVelocityX: x.getVelocity(),
+        gestureOwner: 'edge-back',
+      });
+      motionState.current = 'settling';
+      emitFeelTelemetry({
+        timestamp: performance.now(),
+        primitive: 'InteractiveBack',
+        gesture: 'edge-back',
+        state: 'settling',
+        axis: 'x',
+        surfaceX,
         surfaceVelocityX: drag.velocity,
         gestureOwner: 'edge-back',
       });
@@ -246,14 +261,33 @@ function StackScreen({
           surfaceVelocityX: drag.velocity,
           gestureOwner: 'edge-back',
         });
-        navigation.pop();
+        void animate(
+          x,
+          width,
+          reduced
+            ? { duration: 0.01 }
+            : { ...springs.navigation, velocity: drag.velocity },
+        ).then(() => {
+          navigation.pop({ interactive: true });
+          motionState.current = 'idle';
+          emitFeelTelemetry({
+            timestamp: performance.now(),
+            primitive: 'InteractiveBack',
+            gesture: 'edge-back',
+            state: 'complete',
+            axis: 'x',
+            surfaceX: width,
+            surfaceVelocityX: 0,
+          });
+        });
       } else {
-        const animation = node.animate(
-          [{ transform: `translate3d(${surfaceX}px, 0, 0)` }, { transform: 'none' }],
-          { duration: reduced ? 10 : 220, easing: 'cubic-bezier(.2,.8,.2,1)' },
-        );
-        animation.onfinish = () => {
-          node.style.transform = '';
+        void animate(
+          x,
+          0,
+          reduced
+            ? { duration: 0.01 }
+            : { ...springs.navigation, velocity: drag.velocity },
+        ).then(() => {
           motionState.current = 'idle';
           emitFeelTelemetry({
             timestamp: performance.now(),
@@ -264,7 +298,7 @@ function StackScreen({
             surfaceX: 0,
             surfaceVelocityX: 0,
           });
-        };
+        });
       }
     };
     node.addEventListener('pointerdown', onPointerDown);
@@ -303,7 +337,7 @@ function StackScreen({
           : { x: modal ? 0 : '100%', y: modal ? '100%' : 0, opacity: 1 }
       }
       transition={reduced ? { duration: 0.01 } : springs.navigation}
-      drag={canDragBack ? 'x' : false}
+      drag={canDragBack && backGestureRegion === 'edge' ? 'x' : false}
       dragControls={dragControls}
       dragListener={false}
       dragConstraints={{ left: 0, right: 0 }}
@@ -395,7 +429,7 @@ function StackScreen({
             surfaceVelocityX: info.velocity.x,
             gestureOwner: 'edge-back',
           });
-          navigation.pop();
+          navigation.pop({ interactive: true });
         }
       }}
       onDragTransitionEnd={() => {
@@ -412,6 +446,7 @@ function StackScreen({
         });
       }}
       style={{
+        x: canDragBack && backGestureRegion === 'screen' ? x : undefined,
         position: 'absolute',
         inset: 0,
         minHeight: '100%',
@@ -494,14 +529,6 @@ export function MobileStack({
     [],
   );
   const navigation = useMemo<Navigation>(() => {
-    const withTransition = (update: () => void) => {
-      const documentWithTransitions = document as Document & {
-        startViewTransition?: (callback: () => void) => unknown;
-      };
-      if (!reduced && documentWithTransitions.startViewTransition)
-        documentWithTransitions.startViewTransition(update);
-      else update();
-    };
     const saveActiveScroll = () => {
       const active = state.entries.at(-1);
       const host = active ? screenRefs.current.get(active.key) : undefined;
@@ -520,7 +547,7 @@ export function MobileStack({
         saveActiveScroll();
         const entry = makeEntry(node, options);
         entryCache.current.set(entry.key, entry);
-        withTransition(() => dispatch({ type: 'push', entry }));
+        dispatch({ type: 'push', entry });
         if (history === 'browser')
           window.history.pushState(
             { pwacn: true, pwacnKey: entry.key },
@@ -530,7 +557,7 @@ export function MobileStack({
       },
       pop: () => {
         if (state.entries.length <= 1) return;
-        withTransition(() => dispatch({ type: 'pop' }));
+        dispatch({ type: 'pop' });
         if (history === 'browser') {
           suppressPop.current = true;
           window.history.back();
@@ -539,7 +566,7 @@ export function MobileStack({
       replace: (node, options) => {
         const entry = makeEntry(node, options);
         entryCache.current.set(entry.key, entry);
-        withTransition(() => dispatch({ type: 'replace', entry }));
+        dispatch({ type: 'replace', entry });
         if (history === 'browser')
           window.history.replaceState(
             { pwacn: true, pwacnKey: entry.key },
@@ -550,7 +577,7 @@ export function MobileStack({
       canGoBack: state.entries.length > 1,
       pathname: state.entries.at(-1)?.pathname ?? '/',
     };
-  }, [history, makeEntry, reduced, state.entries]);
+  }, [history, makeEntry, state.entries]);
   const visibleEntries = state.entries.slice(-Math.max(2, maxMountedScreens));
 
   useEffect(() => {

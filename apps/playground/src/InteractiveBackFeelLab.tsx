@@ -11,7 +11,7 @@ function BackDetail() {
   return (
     <section className="back-demo-screen detail" data-back-detail="">
       <header>
-        <Pressable feedback="opacity" onPress={nav.pop}>
+        <Pressable feedback="opacity" onPress={() => nav.pop()}>
           ‹ Index
         </Pressable>
         <strong>Continuity</strong>

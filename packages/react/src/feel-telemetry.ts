@@ -54,6 +54,8 @@ const subscribers = new Set<Subscriber>();
 
 export function emitFeelTelemetry(sample: FeelTelemetrySample) {
   subscribers.forEach((subscriber) => subscriber(sample));
+  if (typeof window !== 'undefined')
+    window.dispatchEvent(new CustomEvent('pwacn:feel', { detail: sample }));
 }
 
 export function subscribeFeelTelemetry(subscriber: Subscriber) {

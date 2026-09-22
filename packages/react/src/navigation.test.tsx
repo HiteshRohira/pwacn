@@ -14,7 +14,7 @@ function Detail() {
   return (
     <main>
       <h1>Detail</h1>
-      <button onClick={stack.pop}>Back</button>
+      <button onClick={() => stack.pop()}>Back</button>
     </main>
   );
 }

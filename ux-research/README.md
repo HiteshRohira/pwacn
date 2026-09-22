@@ -58,6 +58,21 @@ The generated table is deliberately descriptive rather than a pass/fail score. T
 describes the JavaScript motion model; paired video and real-device review remain the
 authority for physical latency and perceived feel.
 
+For the integrated Settings navigation gate, run the production preview on port 4174 and:
+
+```bash
+pnpm feel:navigation
+```
+
+This replays commit, flick, cancel, reversal, nested-stack, and scrolled-screen back gestures
+three times in Chromium/Android and real Playwright WebKit/iPhone. It samples the rendered
+screen position rather than trusting the animation model, enforces route and telemetry
+invariants, checks settle-time repeatability, and writes normal-speed video, 0.25× video,
+screenshots, traces, and an audit to `.ux-artifacts/navigation/`.
+
+Interactive navigation is framework-owned and must not start a browser View Transition.
+View Transitions may only be introduced for transitions that have no pointer-driven phase.
+
 ## Evidence classes
 
 - **Invariant:** deterministic behavior that can fail automation, such as route commitment,

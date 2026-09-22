@@ -54,7 +54,7 @@ Navigation:
 the app should recognize a right-swipe from the screen body instead.
 
 - preserved screens and scroll positions
-- browser history synchronization and progressive View Transitions
+- browser history synchronization with framework-owned spatial transitions
 - leading-edge-only interactive back navigation
 
 ```tsx

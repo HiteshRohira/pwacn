@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const url = 'http://127.0.0.1:4174';
 
 async function swipeBack(page: Page) {
+  await page.waitForTimeout(700);
   const surface = page.locator('[data-pwacn-back-surface]').last();
   await expect(surface).toHaveCSS('transform', 'none');
   await surface.evaluate(async (node) => {
@@ -33,6 +34,7 @@ async function swipeBack(page: Page) {
 }
 
 async function dragDeveloperSheetDown(page: Page) {
+  await page.waitForTimeout(500);
   const handle = page.locator('.pwacn-sheet-handle-zone');
   await handle.evaluate(async (node) => {
     const box = node.getBoundingClientRect();
@@ -113,10 +115,10 @@ test('detail content and appearance controls are functional', async ({ page }) =
 test('developer screen exposes the on-device interaction feel lab', async ({ page }) => {
   await page.goto(url);
   await page.getByRole('button', { name: /Developer/ }).tap();
-  await expect(page.getByRole('heading', { name: 'Interaction Feel Lab' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Developer', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Press feel target' })).toBeVisible();
-  await expect(page.getByText('Body swipe · reverse')).toBeVisible();
-  await page.getByRole('button', { name: /Open sheet test/ }).tap();
+  await expect(page.getByText('INTERACTION TESTS')).toBeVisible();
+  await page.getByRole('button', { name: /Bottom sheet/ }).tap();
   await expect(
     page.getByRole('dialog', { name: 'Bottom Sheet feel test' }),
   ).toBeVisible();
@@ -125,11 +127,31 @@ test('developer screen exposes the on-device interaction feel lab', async ({ pag
 });
 
 test('body swipe navigates back without claiming the system edge', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__pwacnViewTransitions = 0;
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: (update: () => void) => {
+        window.__pwacnViewTransitions += 1;
+        update();
+        return {
+          finished: Promise.resolve(),
+          ready: Promise.resolve(),
+          updateCallbackDone: Promise.resolve(),
+          skipTransition() {},
+        };
+      },
+    });
+  });
   await page.goto(url);
   await page.getByRole('button', { name: /Personal Hotspot/ }).tap();
   await expect(page.getByRole('heading', { name: 'Personal Hotspot' })).toBeVisible();
+  const transitionsBeforeSwipe = await page.evaluate(() => window.__pwacnViewTransitions);
   await swipeBack(page);
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  expect(await page.evaluate(() => window.__pwacnViewTransitions)).toBe(
+    transitionsBeforeSwipe,
+  );
 });
 
 test('body swipe works at every nested stack depth', async ({ page }) => {
@@ -150,7 +172,7 @@ test('app chrome prevents text selection but inputs remain selectable', async ({
   await expect(page.locator('.settings-stage')).toHaveCSS('user-select', 'none');
   await expect(page.getByPlaceholder('Search')).toHaveCSS('user-select', 'text');
   await page.getByRole('button', { name: /Developer/ }).tap();
-  await page.getByRole('button', { name: /Open sheet test/ }).tap();
+  await page.getByRole('button', { name: /Bottom sheet/ }).tap();
   await expect(page.getByRole('dialog', { name: 'Bottom Sheet feel test' })).toHaveCSS(
     'user-select',
     'none',
@@ -163,7 +185,7 @@ test('the feel sheet keeps a coherent dark appearance', async ({ page }) => {
   await page.getByRole('button', { name: 'Dark' }).tap();
   await page.getByRole('button', { name: /Settings/ }).tap();
   await page.getByRole('button', { name: /Developer/ }).tap();
-  await page.getByRole('button', { name: /Open sheet test/ }).tap();
+  await page.getByRole('button', { name: /Bottom sheet/ }).tap();
   const dialog = page.getByRole('dialog', { name: 'Bottom Sheet feel test' });
   await expect(dialog).toHaveCSS('background-color', 'rgb(28, 28, 30)');
   await expect(dialog).toHaveCSS('color', 'rgb(255, 255, 255)');

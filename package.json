@@ -8,6 +8,7 @@
     "dev": "pnpm --filter @pwacn/playground dev",
     "dev:docs": "pnpm --filter @pwacn/docs dev",
     "dev:kitchen-sink": "pnpm --filter @pwacn/kitchen-sink dev",
+    "deploy:kitchen-sink": "pnpm --filter @pwacn/kitchen-sink build && vercel deploy apps/kitchen-sink/dist --prod --yes --project pwacn-settings --scope hiteshrohiras-projects",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -17,6 +18,7 @@
     "e2e": "playwright test",
     "ux:capture": "node scripts/capture-ux.mjs",
     "feel:capture": "node scripts/capture-feel.mjs",
+    "feel:navigation": "node scripts/capture-navigation-feel.mjs",
     "feel:compare": "node scripts/compare-feel.mjs",
     "release:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm e2e"
   },

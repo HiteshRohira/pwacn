@@ -2,6 +2,11 @@ import { haptics } from '@pwacn/core';
 import {
   ActionSheet,
   BottomSheet,
+  MobileHeader,
+  MobileListItem,
+  MobileScreen,
+  MobileScrollArea,
+  MobileSection,
   MobileStack,
   MobileSwitch,
   Pressable,
@@ -352,36 +357,6 @@ function Glyph({ name }: { name: IconName }) {
   );
 }
 
-function StatusBar() {
-  const [time, setTime] = useState('9:41');
-  useEffect(() => {
-    const update = () =>
-      setTime(
-        new Intl.DateTimeFormat('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: false,
-        }).format(new Date()),
-      );
-    update();
-    const timer = window.setInterval(update, 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  return (
-    <div className="status-bar" aria-hidden="true">
-      <strong>{time}</strong>
-      <span className="status-island" />
-      <span className="status-signals">
-        <i className="signal-bars" />
-        <i className="wifi-mark" />
-        <i className="battery-mark">
-          <b />
-        </i>
-      </span>
-    </div>
-  );
-}
-
 type RowProps = {
   icon?: IconName;
   label: string;
@@ -403,36 +378,39 @@ function SettingsRow({
   onPress,
   destructive,
 }: RowProps) {
-  const content = (
-    <>
-      <span className="row-leading">
-        {icon ? <Glyph name={icon} /> : null}
-        <span className={destructive ? 'destructive' : ''}>
-          {label}
-          {note ? <small>{note}</small> : null}
-        </span>
+  const leading = (
+    <span className="row-leading">
+      {icon ? <Glyph name={icon} /> : null}
+      <span className={destructive ? 'destructive' : ''}>
+        {label}
+        {note ? <small>{note}</small> : null}
       </span>
-      <span className="row-trailing">
-        {badge ? <b className="badge">{badge}</b> : null}
-        {value ? <span>{value}</span> : null}
-        {toggle ? (
-          <MobileSwitch
-            label={label}
-            checked={toggle.checked}
-            onCheckedChange={toggle.onChange}
-          />
-        ) : onPress ? (
-          <span className="chevron">›</span>
-        ) : null}
-      </span>
-    </>
+    </span>
   );
-  return onPress ? (
-    <Pressable className="settings-row" feedback="opacity" onPress={onPress}>
-      {content}
-    </Pressable>
-  ) : (
-    <div className="settings-row">{content}</div>
+  const trailing = (
+    <span className="row-trailing">
+      {badge ? <b className="badge">{badge}</b> : null}
+      {value ? <span>{value}</span> : null}
+      {toggle ? (
+        <MobileSwitch
+          label={label}
+          checked={toggle.checked}
+          onCheckedChange={toggle.onChange}
+        />
+      ) : onPress ? (
+        <span className="chevron">›</span>
+      ) : null}
+    </span>
+  );
+  return (
+    <MobileListItem
+      className="settings-row"
+      onPress={onPress}
+      interactive={!!onPress}
+      trailing={trailing}
+    >
+      {leading}
+    </MobileListItem>
   );
 }
 
@@ -446,11 +424,14 @@ function Group({
   title?: string;
 }) {
   return (
-    <section className="settings-group">
-      {title ? <h3>{title}</h3> : null}
-      <div className="group-card">{children}</div>
-      {footer ? <p className="group-footer">{footer}</p> : null}
-    </section>
+    <MobileSection
+      className="settings-group"
+      listClassName="group-card"
+      title={title}
+      footer={footer}
+    >
+      {children}
+    </MobileSection>
   );
 }
 
@@ -465,39 +446,36 @@ function ScreenHeader({
 }) {
   const nav = useMobileStack();
   return (
-    <>
-      <StatusBar />
-      <header className={`screen-header ${root ? 'root-header' : ''}`}>
-        {!root ? (
-          <Pressable className="back-button" feedback="opacity" onPress={nav.pop}>
+    <MobileHeader
+      className={`screen-header ${root ? 'root-header' : ''}`}
+      leading={
+        !root ? (
+          <Pressable className="back-button" feedback="opacity" onPress={() => nav.pop()}>
             <span>‹</span>Settings
           </Pressable>
-        ) : (
-          <span />
-        )}
-        {!root ? <strong>{title}</strong> : null}
-        {onMore ? (
+        ) : null
+      }
+      title={!root ? title : undefined}
+      trailing={
+        onMore ? (
           <Pressable className="more-button" aria-label="More" onPress={onMore}>
             •••
           </Pressable>
-        ) : (
-          <span />
-        )}
-      </header>
-    </>
+        ) : null
+      }
+    />
   );
 }
 
 function DetailScreen({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="ios-screen">
+    <MobileScreen className="ios-screen">
       <ScreenHeader title={title} />
-      <main className="detail-scroll">
+      <MobileScrollArea className="detail-scroll">
         <h1>{title}</h1>
         {children ?? <FunctionalSettings title={title} />}
-      </main>
-      <HomeIndicator />
-    </div>
+      </MobileScrollArea>
+    </MobileScreen>
   );
 }
 
@@ -1338,42 +1316,36 @@ function DeveloperFeelScreen() {
   return (
     <>
       <DetailScreen title="Developer">
-        <section className="feel-demo-card">
-          <span>PWACN FEEL LAB</span>
-          <h2>Interaction Feel Lab</h2>
-          <p>
-            Test contact response, drag continuity, interruption, and route commitment
-            with the same primitives used by the app.
-          </p>
+        <Group
+          title="INTERACTION TESTS"
+          footer="These tests use the same interaction primitives as the rest of the app. Swipe right on this screen to test interactive back."
+        >
           <Pressable
-            className="feel-demo-press-target"
+            className="settings-row feel-demo-press-target"
+            feedback="opacity"
             onPress={() => undefined}
             aria-label="Press feel target"
           >
-            <span>PRESS + DRAG</span>
-            <b>Hold, leave, return</b>
+            <span className="row-leading">Press response</span>
+            <span className="row-trailing">Hold · leave · return</span>
           </Pressable>
           <Pressable
-            className="feel-demo-button"
+            className="settings-row feel-demo-button"
+            feedback="opacity"
             onPress={() => {
               telemetry.clear();
               setSheet(true);
             }}
           >
-            Open sheet test <b>↑</b>
+            <span className="row-leading">Bottom sheet</span>
+            <span className="row-trailing">
+              Open <span className="chevron">›</span>
+            </span>
           </Pressable>
-        </section>
-        <Group
-          title="CANONICAL TESTS"
-          footer="For interactive back, swipe right from the screen body. The physical left edge stays reserved for the system browser gesture."
-        >
-          <SettingsRow label="Press" value="Hold · leave · return" />
-          <SettingsRow label="Sheet" value="Drag · flick · interrupt" />
-          <SettingsRow label="Back" value="Body swipe · reverse" />
         </Group>
         <Group
-          title="LAST RUN"
-          footer="These values describe the browser motion model. Judge final feel with your thumb on this device."
+          title="LAST INTERACTION"
+          footer="Measurements describe the rendered browser surface and update after each interaction."
         >
           <SettingsRow label="State" value={telemetry.current?.state ?? 'Ready'} />
           <SettingsRow
@@ -1503,10 +1475,6 @@ function AppleAccountScreen() {
   );
 }
 
-function HomeIndicator() {
-  return <span className="home-indicator" aria-hidden="true" />;
-}
-
 function SettingsHome() {
   const nav = useMobileStack();
   const [query, setQuery] = useState('');
@@ -1633,9 +1601,8 @@ function SettingsHome() {
     ? groups.flat().filter((row) => row.label.toLowerCase().includes(query.toLowerCase()))
     : null;
   return (
-    <div className="ios-screen">
-      <StatusBar />
-      <main className="settings-scroll">
+    <MobileScreen className="ios-screen">
+      <MobileScrollArea className="settings-scroll">
         <h1>Settings</h1>
         <label className="search-field">
           <svg viewBox="0 0 24 24">
@@ -1688,9 +1655,8 @@ function SettingsHome() {
           <br />
           <span>Designed with pwacn</span>
         </p>
-      </main>
-      <HomeIndicator />
-    </div>
+      </MobileScrollArea>
+    </MobileScreen>
   );
 }
 
@@ -1698,14 +1664,7 @@ export function SettingsApp() {
   return (
     <ToastProvider>
       <div className="settings-stage">
-        <div className="device-shell">
-          <MobileStack initialScreen={<SettingsHome />} backGestureRegion="screen" />
-        </div>
-        <aside className="demo-caption">
-          <strong>pwacn</strong>
-          <span>Settings interaction benchmark</span>
-          <small>Press rows · swipe right from the screen body · toggle controls</small>
-        </aside>
+        <MobileStack initialScreen={<SettingsHome />} backGestureRegion="screen" />
       </div>
     </ToastProvider>
   );
