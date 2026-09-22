@@ -1,5 +1,9 @@
 # pwacn
 
+If you are reading this, Firstly, hi, how the hell did you get here, are you stalking me??
+
+Secondly, this is pre-alpha, pre-relase experimentation, nothing is ready yet, but if you really want to try then here - https://pwacn-settings.vercel.app/ (open in mobile and install as a PWA)
+
 Mobile interaction primitives for React PWAs: native mechanics, application-owned visuals.
 
 pwacn 0.1 provides one motion vocabulary across pressing, dragging, swiping, sheets,
