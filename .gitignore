@@ -8,3 +8,19 @@ test-results
 .ux-artifacts/
 ux-research/references/**/*.mov
 ux-research/references/**/*.mp4
+
+# Local credentials and deployment state
+.env
+.env.*
+!.env.example
+.npmrc
+.vercel/
+.netlify/
+credentials.json
+service-account*.json
+*.pem
+*.p12
+*.pfx
+*.p8
+id_rsa
+id_ed25519
