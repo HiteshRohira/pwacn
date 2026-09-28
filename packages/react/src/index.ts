@@ -1,4 +1,5 @@
 export * from './draggable';
+export * from './double-tap-surface';
 export * from './feel-telemetry';
 export * from './motion-surface';
 export * from './mobile-controls';
@@ -14,3 +15,4 @@ export * from './swipe-tabs';
 export * from './surface-theme';
 export * from './use-mobile-viewport';
 export * from './use-prefers-reduced-motion';
+export * from './vertical-pager';

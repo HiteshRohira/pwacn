@@ -1,4 +1,8 @@
 {
+  "rewrites": [
+    { "source": "/instagram", "destination": "/index.html" },
+    { "source": "/instagram/", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/sw.js",
@@ -8,6 +12,10 @@
     },
     {
       "source": "/manifest.webmanifest",
+      "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
+    },
+    {
+      "source": "/instagram/manifest.webmanifest",
       "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
     }
   ]

@@ -10,9 +10,25 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Settings" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      const instagramDemo = location.pathname.startsWith('/instagram');
+      const manifest = document.createElement('link');
+      manifest.rel = 'manifest';
+      manifest.href = instagramDemo
+        ? '/instagram/manifest.webmanifest'
+        : '/manifest.webmanifest';
+      document.head.appendChild(manifest);
+      const touchIcon = document.createElement('link');
+      touchIcon.rel = 'apple-touch-icon';
+      touchIcon.href = instagramDemo ? '/instagram/icon-192.png' : '/icon-192.png';
+      document.head.appendChild(touchIcon);
+      if (instagramDemo) {
+        document.querySelector('meta[name="theme-color"]').content = '#ffffff';
+        document.querySelector('meta[name="apple-mobile-web-app-title"]').content =
+          'Instagram demo';
+      }
+    </script>
     <link rel="icon" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Settings — built with pwacn</title>
   </head>
   <body>

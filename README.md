@@ -11,7 +11,11 @@ navigation, controls, feedback, safe areas, keyboards, and reduced motion. The r
 contains two deliberately separate products:
 
 - `apps/playground` — an instrumented interaction and tuning laboratory.
-- `apps/kitchen-sink` — an installable iPhone Settings benchmark built from pwacn.
+- `apps/kitchen-sink` — installable Settings and Instagram-style interaction benchmarks built from pwacn.
+
+The [Instagram demo](https://pwacn-settings.vercel.app/instagram) exercises feed scrolling,
+vertical Reels, stories, double-tap likes, and a comment drawer. Its implementation and
+framework findings are in [INSTAGRAM_DEMO.md](./apps/kitchen-sink/INSTAGRAM_DEMO.md).
 
 ## Packages
 
@@ -38,7 +42,7 @@ pnpm release:check       # format, lint, types, unit, build, multi-device E2E
 
 Foundations and controls:
 
-- `Pressable`, `MotionSurface`, `Draggable`, `Swipeable`, `SwipeTabs`
+- `Pressable`, `DoubleTapSurface`, `MotionSurface`, `Draggable`, `Swipeable`, `SwipeTabs`, `VerticalPager`
 - `MobileSwitch`, `SegmentedControl`, `Picker`
 - `useMobileViewport`, including keyboard, viewport offset, and safe-area measurements
 - `usePrefersReducedMotion`

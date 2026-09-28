@@ -33,7 +33,7 @@ const server = createServer(async (request, response) => {
     response.end('Simulated incomplete download');
     return;
   }
-  const file = files.get(path === '/' ? '/index.html' : path);
+  const file = files.get(path === '/' || path === '/instagram' ? '/index.html' : path);
   if (!file) {
     response.statusCode = 404;
     response.end('Missing');
@@ -49,9 +49,13 @@ const server = createServer(async (request, response) => {
           ? 'image/svg+xml'
           : path.endsWith('.webmanifest')
             ? 'application/manifest+json'
-            : path.endsWith('.html') || path === '/'
-              ? 'text/html'
-              : 'image/png',
+            : path.endsWith('.mp4')
+              ? 'video/mp4'
+              : path.endsWith('.jpg')
+                ? 'image/jpeg'
+                : path.endsWith('.html') || path === '/' || path === '/instagram'
+                  ? 'text/html'
+                  : 'image/png',
   );
   response.end(file);
 });
@@ -60,8 +64,8 @@ const url = `http://127.0.0.1:${server.address().port}/`;
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
-const waitReady = async (page) =>
-  page.getByText('Ready offline', { exact: true }).waitFor({ timeout: 15000 });
+const waitReady = async (page, timeout = 15000) =>
+  page.getByText('Ready offline', { exact: true }).waitFor({ timeout });
 const engines = [
   { name: 'Chromium/Android', type: chromium, device: devices['Pixel 7'] },
   { name: 'WebKit/iPhone', type: webkit, device: devices['iPhone 15 Pro'] },
@@ -105,10 +109,16 @@ try {
       await page.close();
       const cold = await context.newPage();
       await cold.goto(url, { waitUntil: 'domcontentloaded' });
-      assert(
-        (await cold.getByRole('heading', { name: 'Settings' }).count()) === 1,
-        `${engine.name}: offline cold launch failed`,
-      );
+      await cold.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
+      const social = await context.newPage();
+      await social.goto(`${url}instagram`, { waitUntil: 'domcontentloaded' });
+      await social.getByRole('button', { name: 'Reels', exact: true }).waitFor();
+      const bundledVideo = await social.evaluate(async () => {
+        const response = await fetch('/instagram/reel-coast.mp4');
+        return response.ok && response.headers.get('content-type')?.includes('video/mp4');
+      });
+      assert(bundledVideo, `${engine.name}: social demo video unavailable offline`);
+      await social.close();
       const labels = [
         'Wi-Fi',
         'Bluetooth',
@@ -237,6 +247,28 @@ try {
         updateId,
         { timeout: 15000 },
       );
+      await updatePage.waitForFunction(
+        async (id) => {
+          const controller = navigator.serviceWorker.controller;
+          if (!controller) return false;
+          return new Promise((resolve) => {
+            const timeout = globalThis.setTimeout(() => {
+              navigator.serviceWorker.removeEventListener('message', onMessage);
+              resolve(false);
+            }, 1000);
+            const onMessage = (event) => {
+              if (event.data?.type !== 'pwacn:offline') return;
+              globalThis.clearTimeout(timeout);
+              navigator.serviceWorker.removeEventListener('message', onMessage);
+              resolve(event.data.buildId === id && event.data.ready === true);
+            };
+            navigator.serviceWorker.addEventListener('message', onMessage);
+            controller.postMessage({ type: 'pwacn:offline-status' });
+          });
+        },
+        updateId,
+        { timeout: 15000 },
+      );
       const cachesAfterUpdate = await updatePage.evaluate(() => globalThis.caches.keys());
       assert(
         cachesAfterUpdate.includes(`pwacn-static-${manifest.buildId}`),
@@ -276,8 +308,8 @@ try {
       );
       if (engine.name.startsWith('WebKit')) networkDown = false;
       else await context.setOffline(false);
-      await lost.reload();
-      await waitReady(lost).catch(async (error) => {
+      await lost.getByRole('button', { name: 'Try again' }).click();
+      await waitReady(lost, 15000).catch(async (error) => {
         console.log(
           'recovery diagnostics',
           engine.name,

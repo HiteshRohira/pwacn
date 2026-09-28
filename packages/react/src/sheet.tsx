@@ -49,6 +49,8 @@ export interface BottomSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
+  /** Content kept at the visible bottom edge through sheet snaps and drags. */
+  footer?: ReactNode;
   title?: string;
   snapPoints?: number[];
   initialSnap?: number;
@@ -62,6 +64,7 @@ export function BottomSheet({
   open,
   onOpenChange,
   children,
+  footer,
   title = 'Sheet',
   snapPoints = [0.55, 0.9],
   initialSnap,
@@ -100,6 +103,10 @@ export function BottomSheet({
   const [snap, setSnap] = useState(initialSnap ?? normalizedSnaps[0] ?? 0.9);
   const height = Math.max(240, viewport.height * (normalizedSnaps[0] ?? 0.9));
   const backdropOpacity = useTransform(y, [0, height], [1, 0]);
+  const footerPadding = useTransform(
+    y,
+    (value) => `calc(env(safe-area-inset-bottom) + ${Math.max(0, value)}px)`,
+  );
   const snapOffset = useCallback(
     (point: number) => Math.max(0, height - viewport.height * point),
     [height, viewport.height],
@@ -455,7 +462,10 @@ export function BottomSheet({
                 height,
                 maxHeight:
                   'calc(var(--pwacn-viewport-height, 100dvh) - env(safe-area-inset-top))',
-                paddingBottom: 'env(safe-area-inset-bottom)',
+                paddingBottom: footer ? footerPadding : 'env(safe-area-inset-bottom)',
+                boxSizing: 'border-box',
+                display: footer ? 'flex' : undefined,
+                flexDirection: footer ? 'column' : undefined,
                 borderRadius: '24px 24px 0 0',
                 color: 'var(--pwacn-sheet-foreground, CanvasText)',
                 background: 'var(--pwacn-sheet-background, Canvas)',
@@ -584,6 +594,7 @@ export function BottomSheet({
                 {title}
               </h2>
               {children}
+              {footer ? <div data-pwacn-sheet-footer="">{footer}</div> : null}
             </motion.div>
           </motion.div>
         </SheetContext.Provider>
