@@ -20,6 +20,8 @@
     "feel:capture": "node scripts/capture-feel.mjs",
     "feel:navigation": "node scripts/capture-navigation-feel.mjs",
     "feel:compare": "node scripts/compare-feel.mjs",
+    "guided:session": "node scripts/guided-session.mjs",
+    "guided:analyze": "node scripts/analyze-guided-session.mjs",
     "release:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm e2e"
   },
   "devDependencies": {
