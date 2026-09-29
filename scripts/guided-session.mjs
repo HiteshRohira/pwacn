@@ -139,7 +139,7 @@ function showLink() {
   console.log('\nOpen on the iPhone:\n' + link.toString());
   console.log('\nSession files: ' + directory);
   console.log(
-    'Commands: prompt <instruction>, attach <recording path>, status, stop, help\n',
+    'Commands: prompt <instruction>, attach <recording path>, status, stop, stop --no-video, help\n',
   );
 }
 
@@ -185,8 +185,14 @@ function command(input) {
   } else if (line === 'status') {
     console.log({ id, eventCount, prompt, directory, relay, videoPath });
   } else if (line === 'help') {
-    console.log('prompt <instruction> | attach <recording path> | status | stop');
-  } else if (line === 'stop') {
+    console.log(
+      'prompt <instruction> | attach <recording path> | status | stop | stop --no-video',
+    );
+  } else if (line === 'stop' && eventCount > 0 && !videoPath) {
+    console.log(
+      'No recording is attached. Keep the relay open for phone upload or USB import. Type stop --no-video to end a log-only session.',
+    );
+  } else if (line === 'stop' || line === 'stop --no-video') {
     tunnel?.kill('SIGTERM');
     server.close();
     metadata();

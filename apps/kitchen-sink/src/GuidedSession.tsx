@@ -267,10 +267,13 @@ function GuidedSessionActive({ config }: { config: Configuration }) {
         headers: { 'Content-Type': file.type || 'video/quicktime' },
         body: file,
       });
-      if (!response.ok) throw new Error('Upload failed');
+      if (!response.ok) throw new Error(`Upload failed (HTTP ${response.status})`);
       setUploadStatus('Recording received');
     } catch {
-      setUploadStatus('Upload failed. Keep the recording and try again.');
+      setUploadStatus(
+        'Upload failed. Keep the recording; the Mac can import it over USB.',
+      );
+      event.target.value = '';
     }
   };
 
@@ -350,7 +353,8 @@ function GuidedSessionActive({ config }: { config: Configuration }) {
             <h2>Thanks for testing</h2>
             <p>
               Stop your iPhone screen recording. Select the saved video here so it can be
-              lined up with the gesture log.
+              lined up with the gesture log. Keep this page open until it says Recording
+              received.
             </p>
             <label className="pwacn-guided-upload">
               Choose screen recording
